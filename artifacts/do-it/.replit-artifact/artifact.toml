@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Do it"
+version = "1.0.0"
+id = "artifacts/do-it"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25531
+
+[services.development]
+run = "pnpm --filter @workspace/do-it run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/do-it", "run", "build" ]
+publicDir = "artifacts/do-it/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25531"
+BASE_PATH = "/"

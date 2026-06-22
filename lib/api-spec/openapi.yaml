@@ -1,22 +1,26 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Do it - Productivity PWA API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: tasks
+    description: Task management
+  - name: habits
+    description: Habit tracking
+  - name: transcribe
+    description: AI audio transcription
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +28,193 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /tasks:
+    get:
+      operationId: getTasks
+      tags: [tasks]
+      summary: Get all tasks for authenticated user
+      parameters:
+        - in: query
+          name: completed
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}:
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /tasks/stats:
+    get:
+      operationId: getTaskStats
+      tags: [tasks]
+      summary: Get task statistics
+      responses:
+        "200":
+          description: Task statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskStats"
+
+  /habits:
+    get:
+      operationId: getHabits
+      tags: [habits]
+      summary: Get all habits for authenticated user
+      responses:
+        "200":
+          description: List of habits with recent logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HabitWithLogs"
+    post:
+      operationId: createHabit
+      tags: [habits]
+      summary: Create a new habit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HabitInput"
+      responses:
+        "201":
+          description: Created habit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habit"
+
+  /habits/{id}:
+    delete:
+      operationId: deleteHabit
+      tags: [habits]
+      summary: Delete a habit
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /habits/{id}/log:
+    post:
+      operationId: logHabit
+      tags: [habits]
+      summary: Log a habit completion for today
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Logged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HabitLog"
+    delete:
+      operationId: unlogHabit
+      tags: [habits]
+      summary: Remove today's habit log
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Removed
+
+  /transcribe:
+    post:
+      operationId: transcribeAudio
+      tags: [transcribe]
+      summary: Transcribe audio and extract task with Gemini AI (multipart form-data with audio blob + userId field)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscribeInput"
+      responses:
+        "201":
+          description: Task extracted and saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +225,131 @@ components:
       required:
         - status
 
+    Task:
+      type: object
+      required: [id, userId, titulo, completada, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        titulo:
+          type: string
+        descripcion:
+          type: ["string", "null"]
+        fechaVencimiento:
+          type: ["string", "null"]
+        completada:
+          type: boolean
+        createdAt:
+          type: string
+
+    TaskInput:
+      type: object
+      required: [titulo, userId]
+      properties:
+        titulo:
+          type: string
+          minLength: 1
+        descripcion:
+          type: ["string", "null"]
+        fechaVencimiento:
+          type: ["string", "null"]
+        userId:
+          type: string
+
+    TaskUpdate:
+      type: object
+      properties:
+        titulo:
+          type: string
+        descripcion:
+          type: ["string", "null"]
+        fechaVencimiento:
+          type: ["string", "null"]
+        completada:
+          type: boolean
+
+    TaskStats:
+      type: object
+      required: [total, completed, pending, completedToday]
+      properties:
+        total:
+          type: integer
+        completed:
+          type: integer
+        pending:
+          type: integer
+        completedToday:
+          type: integer
+
+    Habit:
+      type: object
+      required: [id, userId, nombre, frecuencia, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        nombre:
+          type: string
+        frecuencia:
+          type: string
+        createdAt:
+          type: string
+
+    HabitWithLogs:
+      type: object
+      required: [id, userId, nombre, frecuencia, createdAt, logs]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        nombre:
+          type: string
+        frecuencia:
+          type: string
+        createdAt:
+          type: string
+        logs:
+          type: array
+          items:
+            type: string
+          description: Array of ISO date strings where habit was completed (last 7 days)
+
+    HabitInput:
+      type: object
+      required: [nombre, userId]
+      properties:
+        nombre:
+          type: string
+          minLength: 1
+        frecuencia:
+          type: string
+        userId:
+          type: string
+
+    HabitLog:
+      type: object
+      required: [id, habitId, fechaCompletado]
+      properties:
+        id:
+          type: string
+        habitId:
+          type: string
+        fechaCompletado:
+          type: string
+
+    TranscribeInput:
+      type: object
+      required: [userId, audioBase64, mimeType]
+      properties:
+        userId:
+          type: string
+        audioBase64:
+          type: string
+          description: Base64-encoded audio data
+        mimeType:
+          type: string
+          description: MIME type of the audio (e.g. audio/webm)
