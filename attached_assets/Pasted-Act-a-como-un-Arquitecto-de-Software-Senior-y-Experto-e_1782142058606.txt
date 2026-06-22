@@ -1,0 +1,47 @@
+Actúa como un Arquitecto de Software Senior y Experto en UI/UX. Tu objetivo es construir "Do it", una PWA de productividad minimalista (estilo Apple).
+STACK TECNOLÓGICO:
+Next.js 14 (App Router), React, Tailwind CSS, Lucide Icons, Supabase (Auth Email/Pass + DB), API de Gemini 1.5 Flash, next-pwa, framer-motion.
+SISTEMA DE DISEÑO (ESTRICTO):
+Colores: Fondo #FFFFFF, Texto principal #111111, Texto secundario #A3A3A3, Bordes #F5F5F5. Botones principales en negro sólido (bg-black text-white).
+Tipografía: Inter (sans-serif). Pesos: font-normal (descripciones), font-medium (fechas), font-semibold (títulos). Cero font-black.
+Espaciado: Minimalista y generoso (p-4 a p-6).
+UI Móvil: Sin Top Bar clásica. Títulos grandes alineados a la izquierda (text-3xl font-semibold tracking-tight). Tarjetas de tareas sin fondo, separadas por border-b border-gray-100.
+Bottom Tab Bar: Flotante, efecto cristal (backdrop-blur-md bg-white/80), iconos Lucide (Check, Calendario, Usuario) con stroke-width: 1.5.
+Assets: Usa /public/icono.png para el logo y PWA.
+PLAN DE EJECUCIÓN PASO A PASO:
+Ejecuta esto en orden. No pases al siguiente paso sin terminar el anterior.
+PASO 1: Configuración Base y PWA
+Inicializa Next.js. Instala dependencias: @supabase/supabase-js, @supabase/ssr, lucide-react, next-pwa, framer-motion, @google/genai.
+Configura next.config.mjs con next-pwa apuntando a public/sw.js.
+Crea lib/supabase/client.ts y lib/supabase/server.ts para manejar la conexión.
+PASO 2: Base de Datos (Supabase)
+Crea un archivo supabase/schema.sql en la raíz con el código SQL para crear estas tablas y sus políticas RLS (Row Level Security) basadas en auth.uid():
+tasks: id, user_id, titulo, descripcion, fecha_vencimiento, completada (boolean), created_at.
+habits: id, user_id, nombre, frecuencia, created_at.
+habit_logs: id, habit_id, fecha_completado.
+(Nota para el agente: Solo genera el archivo SQL, el usuario lo ejecutará en Supabase).
+PASO 3: Autenticación (Email/Contraseña)
+Crea app/login/page.tsx. Diseño ultra limpio: Logo (icono.png), inputs de email y contraseña (bg-gray-50 rounded-lg), y un botón negro "Entrar / Registrarse".
+Implementa la lógica de login/signup usando @supabase/ssr. Las sesiones deben ser persistentes.
+Protege la ruta raíz (/) con un middleware (middleware.ts) que redirija a /login si no hay sesión.
+Crea un app/layout.tsx que incluya la Bottom Tab Bar (solo visible si hay sesión).
+PASO 4: Módulo de Tareas y UI Principal
+Crea app/page.tsx (Listado de Tareas).
+Componente de Tarea: Círculo a la izquierda (border-2 border-gray-300 rounded-full). Al hacer click, animación con framer-motion rellenándolo de negro y marcando la tarea como completada en Supabase.
+Input Mágico (Bottom): Justo encima del Tab Bar, una pastilla rounded-full bg-gray-50. A la izquierda un input de texto, a la derecha un botón de micrófono.
+PASO 5: Pipeline de Audio con IA (Gemini)
+En el botón de micrófono, usa MediaRecorder API. Al mantener pulsado, graba audio. Al soltar, envía el blob (audio/webm o mp4) a /api/transcribe.
+Crea app/api/transcribe/route.ts. Esta ruta debe:
+Recibir el audio.
+Enviar el audio a la API de Gemini 1.5 Flash (@google/genai).
+Prompt para Gemini: "Extrae de este audio una tarea. Devuelve un JSON estricto con: 'titulo' (string corto), 'descripcion' (string o null), 'fecha_vencimiento' (ISO 8601 o null)".
+Guardar el JSON devuelto en la tabla tasks de Supabase asociado al usuario autenticado.
+Retornar éxito al frontend para actualizar la lista.
+PASO 6: Habit Tracker
+Crea app/habits/page.tsx.
+Muestra la lista de hábitos.
+Implementa lógica visual simple: cuadritos de los últimos 7 días por hábito. Si está completado, el cuadro es negro; si no, gris claro (bg-gray-100).
+INSTRUCCIONES FINALES PARA EL AGENTE:
+Pide al usuario que configure los Secrets: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, y GEMINI_API_KEY.
+Escribe código modular, limpio y sin comentarios explicativos redundantes.
+Comienza a codificar ahora mismo.
