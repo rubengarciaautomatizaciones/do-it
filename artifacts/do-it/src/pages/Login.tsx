@@ -4,9 +4,8 @@ import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 
 export default function Login() {
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, user } = useAuth();
   const [, setLocation] = useLocation();
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,11 +23,10 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
-    const action = isLogin ? signIn : signUp;
-    const { error: authError } = await action(email, password);
+    const { error: authError } = await signIn(email, password);
 
     if (authError) {
-      setError(authError.message);
+      setError("Credenciales incorrectas o acceso denegado.");
     }
     setLoading(false);
   };
@@ -42,7 +40,7 @@ export default function Login() {
         className="w-full max-w-sm mx-auto"
       >
         <h1 className="text-3xl font-semibold tracking-tight text-gray-900 mb-8">
-          {isLogin ? 'Entrar' : 'Crear cuenta'}
+          Entrar
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -74,18 +72,9 @@ export default function Login() {
             disabled={loading}
             className="w-full bg-black text-white rounded-xl py-4 font-medium mt-4 disabled:opacity-50 transition-opacity"
           >
-            {loading ? 'Cargando...' : (isLogin ? 'Entrar' : 'Registrarse')}
+            {loading ? 'Cargando...' : 'Entrar'}
           </button>
         </form>
-
-        <div className="mt-8 text-center">
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-sm text-gray-500 hover:text-black transition-colors"
-          >
-            {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Entra'}
-          </button>
-        </div>
       </motion.div>
     </div>
   );
