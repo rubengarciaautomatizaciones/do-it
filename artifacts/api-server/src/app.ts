@@ -36,12 +36,19 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use("/api", router);
 
-// ESCUDO PROTECTOR (GLOBAL ERROR HANDLER)
+// ESCUDO PROTECTOR (GLOBAL ERROR HANDLER MEJORADO PARA POSTGRES)
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   logger.error({ err }, "Excepción capturada en el Global Error Handler");
+
+  // Extraemos toda la información útil que Postgres nos manda
   res.status(500).json({ 
     error: "Internal Server Error", 
-    message: err.message || "Error desconocido"
+    message: err.message || "Error desconocido",
+    pg_code: err.code || null,
+    pg_detail: err.detail || null,
+    pg_hint: err.hint || null,
+    pg_table: err.table || null,
+    pg_constraint: err.constraint || null
   });
 });
 
