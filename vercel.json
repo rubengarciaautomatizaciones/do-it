@@ -1,5 +1,6 @@
 {
-  "buildCommand": "pnpm run build",
+  "version": 2,
+  "buildCommand": "pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/do-it run build",
   "outputDirectory": "artifacts/do-it/dist/public",
   "rewrites": [
     {
