@@ -37,17 +37,25 @@ export default function Habits() {
   };
 
   const handleToggleLog = (habitId: string, isLogged: boolean) => {
-    const action = isLogged ? unlogHabit : logHabit;
-    // Assuming unlogHabit works similarly and uses the same endpoint structure based on the spec
-    // However, the spec says useUnlogHabit has variables { id: string }
-    action.mutate(
-      { id: habitId },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetHabitsQueryKey() });
+    if (isLogged) {
+      unlogHabit.mutate(
+        { id: habitId },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getGetHabitsQueryKey() });
+          }
         }
-      }
-    );
+      );
+    } else {
+      logHabit.mutate(
+        { id: habitId },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getGetHabitsQueryKey() });
+          }
+        }
+      );
+    }
   };
 
   return (
