@@ -1,2 +1,2 @@
-import app from '../../api-server/src/app';
+import app from '../../api-server/dist/index.mjs';
 export default app;
