@@ -19,8 +19,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icono.png'],
       manifest: {
-        name: 'Do it',
-        short_name: 'Do it',
+        name: 'do it!',
+        short_name: 'do it!',
         description: 'Productividad minimalista',
         theme_color: '#ffffff',
         background_color: '#ffffff',

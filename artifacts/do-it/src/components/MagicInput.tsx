@@ -117,8 +117,7 @@ export function MagicInput() {
   const isWorking = createTask.isPending || transcribeAudio.isPending;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto md:hidden">
-      {/* OCULTO EN PC (md:hidden) PORQUE EN PC USAMOS LA TABLA */}
+    <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
       <form onSubmit={handleTextSubmit} className="relative flex items-center shadow-lg rounded-full">
         <input
           type="text"

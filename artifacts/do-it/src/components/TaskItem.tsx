@@ -4,14 +4,14 @@ import { useUpdateTask, useDeleteTask, useAddTaskAttachment, getGetTasksQueryKey
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Loader2, Mic } from 'lucide-react';
+import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Loader2, Mic, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
 import { RichTextEditor } from './RichTextEditor';
 
-// --- COMPONENTE DE DETALLES COMPARTIDO (TipTap, Enlaces, Archivos) ---
+// --- COMPONENTE DE DETALLES COMPARTIDO ---
 function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -31,8 +31,9 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
     });
   };
 
-  const handleDelete = () => {
-    if (onClose) onClose(); // Cierra el modal antes de borrar para evitar bugs visuales
+  const handleDelete = (e?: React.MouseEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (onClose) onClose(); 
     deleteTask.mutate({ id: task.id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
@@ -90,10 +91,30 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
 
   return (
     <div className="space-y-6 pt-2">
-      {/* Editor TipTap */}
       <RichTextEditor content={task.descripcion || ''} onChange={handleDescriptionChange} />
 
-      {/* Enlaces y Archivos */}
+      {/* SELECTOR DE FECHA Y HORA NATIVO */}
+      <div className="flex flex-wrap gap-4">
+        <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
+          <Calendar className="w-4 h-4 text-gray-500" />
+          <input 
+            type="date" 
+            value={task.fechaVencimiento || ''} 
+            onChange={(e) => updateTask.mutate({ id: task.id, data: { fechaVencimiento: e.target.value || null } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) }) })}
+            className="bg-transparent border-0 p-0 text-sm text-gray-700 focus:ring-0 cursor-pointer outline-none"
+          />
+        </div>
+        <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
+          <Clock className="w-4 h-4 text-gray-500" />
+          <input 
+            type="time" 
+            value={task.horaVencimiento || ''} 
+            onChange={(e) => updateTask.mutate({ id: task.id, data: { horaVencimiento: e.target.value || null } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) }) })}
+            className="bg-transparent border-0 p-0 text-sm text-gray-700 focus:ring-0 cursor-pointer outline-none"
+          />
+        </div>
+      </div>
+
       <div className="space-y-3">
         {(task.links && task.links.length > 0) || (task.attachments && task.attachments.length > 0) ? (
           <div className="flex flex-col gap-2">
@@ -116,7 +137,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
           </div>
         ) : null}
 
-        {/* Botones de acción rápidos */}
         <div className="flex flex-wrap gap-2">
           {isAddingLink ? (
             <form onSubmit={handleAddLink} className="flex flex-1 gap-2">
@@ -146,7 +166,7 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
   );
 }
 
-// --- CHECKBOX ANIMADO COMPARTIDO ---
+// --- CHECKBOX ANIMADO ---
 function Checkbox({ completada, onToggle }: { completada: boolean, onToggle: (e: React.MouseEvent) => void }) {
   return (
     <button onClick={onToggle} className="flex-shrink-0 focus:outline-none flex items-center justify-center w-8 h-8">
@@ -169,13 +189,14 @@ function Checkbox({ completada, onToggle }: { completada: boolean, onToggle: (e:
   );
 }
 
-// --- VISTA MÓVIL (Lista + Modal) ---
+// --- VISTA MÓVIL ---
 export function TaskItemMobile({ task }: { task: Task }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
 
   const toggleComplete = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     const newStatus = !task.completada;
     updateTask.mutate({ id: task.id, data: { completada: newStatus } }, {
@@ -217,13 +238,15 @@ export function TaskItemMobile({ task }: { task: Task }) {
   );
 }
 
-// --- VISTA PC (Fila de Tabla + Acordeón) ---
+// --- VISTA PC (Fila de Tabla que abre Modal) ---
 export function TaskRowDesktop({ task }: { task: Task }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
 
   const toggleComplete = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     const newStatus = !task.completada;
     updateTask.mutate({ id: task.id, data: { completada: newStatus } }, {
@@ -234,47 +257,65 @@ export function TaskRowDesktop({ task }: { task: Task }) {
     });
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    deleteTask.mutate({ id: task.id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
+      }
+    });
+  };
+
+  // Limpiar HTML de la descripción para la previsualización
+  const plainTextDescription = task.descripcion ? task.descripcion.replace(/<[^>]*>?/gm, '') : '';
+
   return (
-    <>
-      <motion.tr 
-        layout
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className={`group border-b border-gray-50 hover:bg-gray-50/30 transition-colors cursor-pointer ${isExpanded ? 'bg-gray-50/30' : ''}`}
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <td className="p-2 text-center">
-          <Checkbox completada={task.completada} onToggle={toggleComplete} />
-        </td>
-        <td className={`p-3 ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
-          {task.titulo}
-        </td>
-        <td className="p-3 text-gray-500 text-sm">
-          {task.fechaVencimiento ? format(new Date(task.fechaVencimiento), "d MMM yyyy", { locale: es }) : '-'}
-        </td>
-        <td className="p-3 text-gray-500 text-sm">
-          <div className="flex items-center gap-2">
-            {task.attachments?.length > 0 && <span className="flex items-center gap-1"><Paperclip className="w-3 h-3"/> {task.attachments.length}</span>}
-            {task.links?.length > 0 && <span className="flex items-center gap-1"><LinkIcon className="w-3 h-3"/> {task.links.length}</span>}
-            {!task.attachments?.length && !task.links?.length && '-'}
-          </div>
-        </td>
-        <td className="p-3 text-right">
-          <button onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }} className="text-gray-400 hover:text-black text-xs font-medium px-2 py-1 rounded hover:bg-gray-100">
-            {isExpanded ? 'Cerrar' : 'Abrir'}
-          </button>
-        </td>
-      </motion.tr>
-      {isExpanded && (
-        <tr>
-          <td colSpan={5} className="p-0 border-b border-gray-100 bg-gray-50/10">
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="overflow-hidden">
-              <div className="p-6 max-w-3xl">
-                <TaskDetails task={task} onClose={() => setIsExpanded(false)} />
-              </div>
-            </motion.div>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <motion.tr 
+          layout
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="group border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer"
+        >
+          <td className="p-2 text-center" onClick={e => e.stopPropagation()}>
+            <Checkbox completada={task.completada} onToggle={toggleComplete} />
           </td>
-        </tr>
-      )}
-    </>
+          <td className={`p-3 whitespace-nowrap ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+            {task.titulo}
+          </td>
+          <td className="p-3 text-gray-500 text-sm max-w-[200px] truncate">
+            {plainTextDescription}
+          </td>
+          <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
+            {task.fechaVencimiento ? format(new Date(task.fechaVencimiento), "d MMM yyyy", { locale: es }) : ''}
+          </td>
+          <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
+            {(task.attachments?.length > 0 || task.links?.length > 0) && (
+              <div className="flex items-center gap-2">
+                {task.attachments?.length > 0 && <span className="flex items-center gap-1"><Paperclip className="w-3 h-3"/> {task.attachments.length}</span>}
+                {task.links?.length > 0 && <span className="flex items-center gap-1"><LinkIcon className="w-3 h-3"/> {task.links.length}</span>}
+              </div>
+            )}
+          </td>
+          <td className="p-3 text-right" onClick={e => e.stopPropagation()}>
+            <button onClick={handleDelete} className="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </td>
+        </motion.tr>
+      </DialogTrigger>
+      <DialogContent className="bg-white/80 backdrop-blur-xl border border-gray-100/50 shadow-2xl w-[90%] max-w-2xl rounded-3xl p-0 gap-0 overflow-hidden">
+        <div className="p-6 border-b border-gray-100/50">
+          <DialogTitle className="text-2xl font-semibold text-gray-900 leading-tight pr-6">
+            {task.titulo}
+          </DialogTitle>
+        </div>
+        <div className="p-6 max-h-[70vh] overflow-y-auto">
+          <TaskDetails task={task} onClose={() => setIsOpen(false)} />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
