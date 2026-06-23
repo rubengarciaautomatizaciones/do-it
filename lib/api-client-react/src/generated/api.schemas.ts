@@ -17,6 +17,10 @@ export interface Task {
   descripcion?: string | null;
   /** @nullable */
   fechaVencimiento?: string | null;
+  /** @nullable */
+  horaVencimiento?: string | null;
+  links?: string[];
+  notificaciones?: string[];
   completada: boolean;
   createdAt: string;
 }
@@ -28,6 +32,16 @@ export interface TaskInput {
   descripcion?: string | null;
   /** @nullable */
   fechaVencimiento?: string | null;
+  /** @nullable */
+  horaVencimiento?: string | null;
+  links?: string[];
+  notificaciones?: string[];
+  userId: string;
+}
+
+export interface MagicTextInput {
+  /** @minLength 1 */
+  text: string;
   userId: string;
 }
 
@@ -37,6 +51,10 @@ export interface TaskUpdate {
   descripcion?: string | null;
   /** @nullable */
   fechaVencimiento?: string | null;
+  /** @nullable */
+  horaVencimiento?: string | null;
+  links?: string[];
+  notificaciones?: string[];
   completada?: boolean;
 }
 
@@ -52,6 +70,10 @@ export interface Habit {
   userId: string;
   nombre: string;
   frecuencia: string;
+  targetDays: number[];
+  archived: boolean;
+  currentStreak: number;
+  bestStreak: number;
   createdAt: string;
 }
 
@@ -60,8 +82,11 @@ export interface HabitWithLogs {
   userId: string;
   nombre: string;
   frecuencia: string;
+  targetDays: number[];
+  archived: boolean;
+  currentStreak: number;
+  bestStreak: number;
   createdAt: string;
-  /** Array of ISO date strings where habit was completed (last 7 days) */
   logs: string[];
 }
 
@@ -69,6 +94,7 @@ export interface HabitInput {
   /** @minLength 1 */
   nombre: string;
   frecuencia?: string;
+  targetDays?: number[];
   userId: string;
 }
 
@@ -80,9 +106,7 @@ export interface HabitLog {
 
 export interface TranscribeInput {
   userId: string;
-  /** Base64-encoded audio data */
   audioBase64: string;
-  /** MIME type of the audio (e.g. audio/webm) */
   mimeType: string;
 }
 

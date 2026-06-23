@@ -5,22 +5,16 @@ info:
   description: Do it - Productivity PWA API
 servers:
   - url: /api
-    description: Base API path
 tags:
   - name: health
-    description: Health operations
   - name: tasks
-    description: Task management
   - name: habits
-    description: Habit tracking
   - name: transcribe
-    description: AI audio transcription
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
       responses:
         "200":
           description: Healthy
@@ -33,7 +27,6 @@ paths:
     get:
       operationId: getTasks
       tags: [tasks]
-      summary: Get all tasks for authenticated user
       parameters:
         - in: query
           name: completed
@@ -51,7 +44,6 @@ paths:
     post:
       operationId: createTask
       tags: [tasks]
-      summary: Create a new task
       requestBody:
         required: true
         content:
@@ -66,11 +58,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/Task"
 
+  /tasks/magic-text:
+    post:
+      operationId: createMagicTextTask
+      tags: [tasks]
+      summary: Procesa texto libre con Gemini para crear la tarea
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MagicTextInput"
+      responses:
+        "201":
+          description: Task extracted and saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
   /tasks/{id}:
     patch:
       operationId: updateTask
       tags: [tasks]
-      summary: Update a task
       parameters:
         - in: path
           name: id
@@ -93,7 +103,6 @@ paths:
     delete:
       operationId: deleteTask
       tags: [tasks]
-      summary: Delete a task
       parameters:
         - in: path
           name: id
@@ -108,7 +117,6 @@ paths:
     get:
       operationId: getTaskStats
       tags: [tasks]
-      summary: Get task statistics
       responses:
         "200":
           description: Task statistics
@@ -121,10 +129,9 @@ paths:
     get:
       operationId: getHabits
       tags: [habits]
-      summary: Get all habits for authenticated user
       responses:
         "200":
-          description: List of habits with recent logs
+          description: List of habits
           content:
             application/json:
               schema:
@@ -134,7 +141,6 @@ paths:
     post:
       operationId: createHabit
       tags: [habits]
-      summary: Create a new habit
       requestBody:
         required: true
         content:
@@ -153,7 +159,6 @@ paths:
     delete:
       operationId: deleteHabit
       tags: [habits]
-      summary: Delete a habit
       parameters:
         - in: path
           name: id
@@ -168,7 +173,6 @@ paths:
     post:
       operationId: logHabit
       tags: [habits]
-      summary: Log a habit completion for today
       parameters:
         - in: path
           name: id
@@ -185,7 +189,6 @@ paths:
     delete:
       operationId: unlogHabit
       tags: [habits]
-      summary: Remove today's habit log
       parameters:
         - in: path
           name: id
@@ -200,7 +203,6 @@ paths:
     post:
       operationId: transcribeAudio
       tags: [transcribe]
-      summary: Transcribe audio and extract task with Gemini AI (multipart form-data with audio blob + userId field)
       requestBody:
         required: true
         content:
@@ -220,136 +222,113 @@ components:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
+      required: [status]
 
     Task:
       type: object
       required: [id, userId, titulo, completada, createdAt]
       properties:
-        id:
-          type: string
-        userId:
-          type: string
-        titulo:
-          type: string
-        descripcion:
-          type: ["string", "null"]
-        fechaVencimiento:
-          type: ["string", "null"]
-        completada:
-          type: boolean
-        createdAt:
-          type: string
+        id: { type: string }
+        userId: { type: string }
+        titulo: { type: string }
+        descripcion: { type: ["string", "null"] }
+        fechaVencimiento: { type: ["string", "null"] }
+        horaVencimiento: { type: ["string", "null"] }
+        links: { type: array, items: { type: string } }
+        notificaciones: { type: array, items: { type: string } }
+        completada: { type: boolean }
+        createdAt: { type: string }
 
     TaskInput:
       type: object
       required: [titulo, userId]
       properties:
-        titulo:
-          type: string
-          minLength: 1
-        descripcion:
-          type: ["string", "null"]
-        fechaVencimiento:
-          type: ["string", "null"]
-        userId:
-          type: string
+        titulo: { type: string, minLength: 1 }
+        descripcion: { type: ["string", "null"] }
+        fechaVencimiento: { type: ["string", "null"] }
+        horaVencimiento: { type: ["string", "null"] }
+        links: { type: array, items: { type: string } }
+        notificaciones: { type: array, items: { type: string } }
+        userId: { type: string }
+
+    MagicTextInput:
+      type: object
+      required: [text, userId]
+      properties:
+        text: { type: string, minLength: 1 }
+        userId: { type: string }
 
     TaskUpdate:
       type: object
       properties:
-        titulo:
-          type: string
-        descripcion:
-          type: ["string", "null"]
-        fechaVencimiento:
-          type: ["string", "null"]
-        completada:
-          type: boolean
+        titulo: { type: string }
+        descripcion: { type: ["string", "null"] }
+        fechaVencimiento: { type: ["string", "null"] }
+        horaVencimiento: { type: ["string", "null"] }
+        links: { type: array, items: { type: string } }
+        notificaciones: { type: array, items: { type: string } }
+        completada: { type: boolean }
 
     TaskStats:
       type: object
       required: [total, completed, pending, completedToday]
       properties:
-        total:
-          type: integer
-        completed:
-          type: integer
-        pending:
-          type: integer
-        completedToday:
-          type: integer
+        total: { type: integer }
+        completed: { type: integer }
+        pending: { type: integer }
+        completedToday: { type: integer }
 
     Habit:
       type: object
-      required: [id, userId, nombre, frecuencia, createdAt]
+      required: [id, userId, nombre, frecuencia, createdAt, targetDays, archived, currentStreak, bestStreak]
       properties:
-        id:
-          type: string
-        userId:
-          type: string
-        nombre:
-          type: string
-        frecuencia:
-          type: string
-        createdAt:
-          type: string
+        id: { type: string }
+        userId: { type: string }
+        nombre: { type: string }
+        frecuencia: { type: string }
+        targetDays: { type: array, items: { type: number } }
+        archived: { type: boolean }
+        currentStreak: { type: integer }
+        bestStreak: { type: integer }
+        createdAt: { type: string }
 
     HabitWithLogs:
       type: object
-      required: [id, userId, nombre, frecuencia, createdAt, logs]
+      required: [id, userId, nombre, frecuencia, createdAt, logs, targetDays, archived, currentStreak, bestStreak]
       properties:
-        id:
-          type: string
-        userId:
-          type: string
-        nombre:
-          type: string
-        frecuencia:
-          type: string
-        createdAt:
-          type: string
-        logs:
-          type: array
-          items:
-            type: string
-          description: Array of ISO date strings where habit was completed (last 7 days)
+        id: { type: string }
+        userId: { type: string }
+        nombre: { type: string }
+        frecuencia: { type: string }
+        targetDays: { type: array, items: { type: number } }
+        archived: { type: boolean }
+        currentStreak: { type: integer }
+        bestStreak: { type: integer }
+        createdAt: { type: string }
+        logs: { type: array, items: { type: string } }
 
     HabitInput:
       type: object
       required: [nombre, userId]
       properties:
-        nombre:
-          type: string
-          minLength: 1
-        frecuencia:
-          type: string
-        userId:
-          type: string
+        nombre: { type: string, minLength: 1 }
+        frecuencia: { type: string }
+        targetDays: { type: array, items: { type: number } }
+        userId: { type: string }
 
     HabitLog:
       type: object
       required: [id, habitId, fechaCompletado]
       properties:
-        id:
-          type: string
-        habitId:
-          type: string
-        fechaCompletado:
-          type: string
+        id: { type: string }
+        habitId: { type: string }
+        fechaCompletado: { type: string }
 
     TranscribeInput:
       type: object
       required: [userId, audioBase64, mimeType]
       properties:
-        userId:
-          type: string
-        audioBase64:
-          type: string
-          description: Base64-encoded audio data
-        mimeType:
-          type: string
-          description: MIME type of the audio (e.g. audio/webm)
+        userId: { type: string }
+        audioBase64: { type: string }
+        mimeType: { type: string }

@@ -6,10 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HabitInput {
+export interface MagicTextInput {
   /** @minLength 1 */
-  nombre: string;
-  frecuencia?: string;
-  targetDays?: number[];
+  text: string;
   userId: string;
 }

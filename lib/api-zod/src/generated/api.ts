@@ -8,17 +8,11 @@
 import * as zod from 'zod';
 
 
-/**
- * @summary Health check
- */
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
 
 
-/**
- * @summary Get all tasks for authenticated user
- */
 export const GetTasksQueryParams = zod.object({
   "completed": zod.coerce.boolean().optional()
 })
@@ -29,15 +23,15 @@ export const GetTasksResponseItem = zod.object({
   "titulo": zod.string(),
   "descripcion": zod.string().nullish(),
   "fechaVencimiento": zod.string().nullish(),
+  "horaVencimiento": zod.string().nullish(),
+  "links": zod.array(zod.string()).optional(),
+  "notificaciones": zod.array(zod.string()).optional(),
   "completada": zod.boolean(),
   "createdAt": zod.string()
 })
 export const GetTasksResponse = zod.array(GetTasksResponseItem)
 
 
-/**
- * @summary Create a new task
- */
 
 
 
@@ -45,13 +39,25 @@ export const CreateTaskBody = zod.object({
   "titulo": zod.string().min(1),
   "descripcion": zod.string().nullish(),
   "fechaVencimiento": zod.string().nullish(),
+  "horaVencimiento": zod.string().nullish(),
+  "links": zod.array(zod.string()).optional(),
+  "notificaciones": zod.array(zod.string()).optional(),
   "userId": zod.string()
 })
 
 
 /**
- * @summary Update a task
+ * @summary Procesa texto libre con Gemini para crear la tarea
  */
+
+
+
+export const CreateMagicTextTaskBody = zod.object({
+  "text": zod.string().min(1),
+  "userId": zod.string()
+})
+
+
 export const UpdateTaskParams = zod.object({
   "id": zod.coerce.string()
 })
@@ -60,6 +66,9 @@ export const UpdateTaskBody = zod.object({
   "titulo": zod.string().optional(),
   "descripcion": zod.string().nullish(),
   "fechaVencimiento": zod.string().nullish(),
+  "horaVencimiento": zod.string().nullish(),
+  "links": zod.array(zod.string()).optional(),
+  "notificaciones": zod.array(zod.string()).optional(),
   "completada": zod.boolean().optional()
 })
 
@@ -69,22 +78,19 @@ export const UpdateTaskResponse = zod.object({
   "titulo": zod.string(),
   "descripcion": zod.string().nullish(),
   "fechaVencimiento": zod.string().nullish(),
+  "horaVencimiento": zod.string().nullish(),
+  "links": zod.array(zod.string()).optional(),
+  "notificaciones": zod.array(zod.string()).optional(),
   "completada": zod.boolean(),
   "createdAt": zod.string()
 })
 
 
-/**
- * @summary Delete a task
- */
 export const DeleteTaskParams = zod.object({
   "id": zod.coerce.string()
 })
 
 
-/**
- * @summary Get task statistics
- */
 export const GetTaskStatsResponse = zod.object({
   "total": zod.number(),
   "completed": zod.number(),
@@ -93,64 +99,51 @@ export const GetTaskStatsResponse = zod.object({
 })
 
 
-/**
- * @summary Get all habits for authenticated user
- */
 export const GetHabitsResponseItem = zod.object({
   "id": zod.string(),
   "userId": zod.string(),
   "nombre": zod.string(),
   "frecuencia": zod.string(),
+  "targetDays": zod.array(zod.number()),
+  "archived": zod.boolean(),
+  "currentStreak": zod.number(),
+  "bestStreak": zod.number(),
   "createdAt": zod.string(),
-  "logs": zod.array(zod.string()).describe('Array of ISO date strings where habit was completed (last 7 days)')
+  "logs": zod.array(zod.string())
 })
 export const GetHabitsResponse = zod.array(GetHabitsResponseItem)
 
 
-/**
- * @summary Create a new habit
- */
 
 
 
 export const CreateHabitBody = zod.object({
   "nombre": zod.string().min(1),
   "frecuencia": zod.string().optional(),
+  "targetDays": zod.array(zod.number()).optional(),
   "userId": zod.string()
 })
 
 
-/**
- * @summary Delete a habit
- */
 export const DeleteHabitParams = zod.object({
   "id": zod.coerce.string()
 })
 
 
-/**
- * @summary Log a habit completion for today
- */
 export const LogHabitParams = zod.object({
   "id": zod.coerce.string()
 })
 
 
-/**
- * @summary Remove today's habit log
- */
 export const UnlogHabitParams = zod.object({
   "id": zod.coerce.string()
 })
 
 
-/**
- * @summary Transcribe audio and extract task with Gemini AI (multipart form-data with audio blob + userId field)
- */
 export const TranscribeAudioBody = zod.object({
   "userId": zod.string(),
-  "audioBase64": zod.string().describe('Base64-encoded audio data'),
-  "mimeType": zod.string().describe('MIME type of the audio (e.g. audio\/webm)')
+  "audioBase64": zod.string(),
+  "mimeType": zod.string()
 })
 
 

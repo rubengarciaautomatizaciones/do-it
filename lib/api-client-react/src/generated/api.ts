@@ -26,6 +26,7 @@ import type {
   HabitLog,
   HabitWithLogs,
   HealthStatus,
+  MagicTextInput,
   Task,
   TaskInput,
   TaskStats,
@@ -53,9 +54,6 @@ export const getHealthCheckUrl = () => {
   return `/api/healthz`
 }
 
-/**
- * @summary Health check
- */
 export const healthCheck = async ( options?: RequestInit): Promise<HealthStatus> => {
 
   return customFetch<HealthStatus>(getHealthCheckUrl(),
@@ -100,9 +98,6 @@ export type HealthCheckQueryResult = NonNullable<Awaited<ReturnType<typeof healt
 export type HealthCheckQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Health check
- */
 
 export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
@@ -137,9 +132,6 @@ export const getGetTasksUrl = (params?: GetTasksParams,) => {
   return stringifiedParams.length > 0 ? `/api/tasks?${stringifiedParams}` : `/api/tasks`
 }
 
-/**
- * @summary Get all tasks for authenticated user
- */
 export const getTasks = async (params?: GetTasksParams, options?: RequestInit): Promise<Task[]> => {
 
   return customFetch<Task[]>(getGetTasksUrl(params),
@@ -184,9 +176,6 @@ export type GetTasksQueryResult = NonNullable<Awaited<ReturnType<typeof getTasks
 export type GetTasksQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Get all tasks for authenticated user
- */
 
 export function useGetTasks<TData = Awaited<ReturnType<typeof getTasks>>, TError = ErrorType<unknown>>(
  params?: GetTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
@@ -214,9 +203,6 @@ export const getCreateTaskUrl = () => {
   return `/api/tasks`
 }
 
-/**
- * @summary Create a new task
- */
 export const createTask = async (taskInput: TaskInput, options?: RequestInit): Promise<Task> => {
 
   return customFetch<Task>(getCreateTaskUrl(),
@@ -263,10 +249,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateTaskMutationBody = BodyType<TaskInput>
     export type CreateTaskMutationError = ErrorType<unknown>
 
-    /**
- * @summary Create a new task
- */
-export const useCreateTask = <TError = ErrorType<unknown>,
+    export const useCreateTask = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{data: BodyType<TaskInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createTask>>,
@@ -277,6 +260,77 @@ export const useCreateTask = <TError = ErrorType<unknown>,
       return useMutation(getCreateTaskMutationOptions(options));
     }
 
+export const getCreateMagicTextTaskUrl = () => {
+
+
+
+
+  return `/api/tasks/magic-text`
+}
+
+/**
+ * @summary Procesa texto libre con Gemini para crear la tarea
+ */
+export const createMagicTextTask = async (magicTextInput: MagicTextInput, options?: RequestInit): Promise<Task> => {
+
+  return customFetch<Task>(getCreateMagicTextTaskUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      magicTextInput,)
+  }
+);}
+
+
+
+
+export const getCreateMagicTextTaskMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMagicTextTask>>, TError,{data: BodyType<MagicTextInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMagicTextTask>>, TError,{data: BodyType<MagicTextInput>}, TContext> => {
+
+const mutationKey = ['createMagicTextTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMagicTextTask>>, {data: BodyType<MagicTextInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMagicTextTask(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMagicTextTaskMutationResult = NonNullable<Awaited<ReturnType<typeof createMagicTextTask>>>
+    export type CreateMagicTextTaskMutationBody = BodyType<MagicTextInput>
+    export type CreateMagicTextTaskMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Procesa texto libre con Gemini para crear la tarea
+ */
+export const useCreateMagicTextTask = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMagicTextTask>>, TError,{data: BodyType<MagicTextInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMagicTextTask>>,
+        TError,
+        {data: BodyType<MagicTextInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMagicTextTaskMutationOptions(options));
+    }
+
 export const getUpdateTaskUrl = (id: string,) => {
 
 
@@ -285,9 +339,6 @@ export const getUpdateTaskUrl = (id: string,) => {
   return `/api/tasks/${id}`
 }
 
-/**
- * @summary Update a task
- */
 export const updateTask = async (id: string,
     taskUpdate: TaskUpdate, options?: RequestInit): Promise<Task> => {
 
@@ -335,10 +386,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateTaskMutationBody = BodyType<TaskUpdate>
     export type UpdateTaskMutationError = ErrorType<unknown>
 
-    /**
- * @summary Update a task
- */
-export const useUpdateTask = <TError = ErrorType<unknown>,
+    export const useUpdateTask = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{id: string;data: BodyType<TaskUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateTask>>,
@@ -357,9 +405,6 @@ export const getDeleteTaskUrl = (id: string,) => {
   return `/api/tasks/${id}`
 }
 
-/**
- * @summary Delete a task
- */
 export const deleteTask = async (id: string, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getDeleteTaskUrl(id),
@@ -405,10 +450,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteTaskMutationError = ErrorType<unknown>
 
-    /**
- * @summary Delete a task
- */
-export const useDeleteTask = <TError = ErrorType<unknown>,
+    export const useDeleteTask = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTask>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteTask>>,
@@ -427,9 +469,6 @@ export const getGetTaskStatsUrl = () => {
   return `/api/tasks/stats`
 }
 
-/**
- * @summary Get task statistics
- */
 export const getTaskStats = async ( options?: RequestInit): Promise<TaskStats> => {
 
   return customFetch<TaskStats>(getGetTaskStatsUrl(),
@@ -474,9 +513,6 @@ export type GetTaskStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getT
 export type GetTaskStatsQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Get task statistics
- */
 
 export function useGetTaskStats<TData = Awaited<ReturnType<typeof getTaskStats>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
@@ -504,9 +540,6 @@ export const getGetHabitsUrl = () => {
   return `/api/habits`
 }
 
-/**
- * @summary Get all habits for authenticated user
- */
 export const getHabits = async ( options?: RequestInit): Promise<HabitWithLogs[]> => {
 
   return customFetch<HabitWithLogs[]>(getGetHabitsUrl(),
@@ -551,9 +584,6 @@ export type GetHabitsQueryResult = NonNullable<Awaited<ReturnType<typeof getHabi
 export type GetHabitsQueryError = ErrorType<unknown>
 
 
-/**
- * @summary Get all habits for authenticated user
- */
 
 export function useGetHabits<TData = Awaited<ReturnType<typeof getHabits>>, TError = ErrorType<unknown>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHabits>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
@@ -581,9 +611,6 @@ export const getCreateHabitUrl = () => {
   return `/api/habits`
 }
 
-/**
- * @summary Create a new habit
- */
 export const createHabit = async (habitInput: HabitInput, options?: RequestInit): Promise<Habit> => {
 
   return customFetch<Habit>(getCreateHabitUrl(),
@@ -630,10 +657,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateHabitMutationBody = BodyType<HabitInput>
     export type CreateHabitMutationError = ErrorType<unknown>
 
-    /**
- * @summary Create a new habit
- */
-export const useCreateHabit = <TError = ErrorType<unknown>,
+    export const useCreateHabit = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHabit>>, TError,{data: BodyType<HabitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createHabit>>,
@@ -652,9 +676,6 @@ export const getDeleteHabitUrl = (id: string,) => {
   return `/api/habits/${id}`
 }
 
-/**
- * @summary Delete a habit
- */
 export const deleteHabit = async (id: string, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getDeleteHabitUrl(id),
@@ -700,10 +721,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteHabitMutationError = ErrorType<unknown>
 
-    /**
- * @summary Delete a habit
- */
-export const useDeleteHabit = <TError = ErrorType<unknown>,
+    export const useDeleteHabit = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHabit>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteHabit>>,
@@ -722,9 +740,6 @@ export const getLogHabitUrl = (id: string,) => {
   return `/api/habits/${id}/log`
 }
 
-/**
- * @summary Log a habit completion for today
- */
 export const logHabit = async (id: string, options?: RequestInit): Promise<HabitLog> => {
 
   return customFetch<HabitLog>(getLogHabitUrl(id),
@@ -770,10 +785,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type LogHabitMutationError = ErrorType<unknown>
 
-    /**
- * @summary Log a habit completion for today
- */
-export const useLogHabit = <TError = ErrorType<unknown>,
+    export const useLogHabit = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logHabit>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof logHabit>>,
@@ -792,9 +804,6 @@ export const getUnlogHabitUrl = (id: string,) => {
   return `/api/habits/${id}/log`
 }
 
-/**
- * @summary Remove today's habit log
- */
 export const unlogHabit = async (id: string, options?: RequestInit): Promise<void> => {
 
   return customFetch<void>(getUnlogHabitUrl(id),
@@ -840,10 +849,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UnlogHabitMutationError = ErrorType<unknown>
 
-    /**
- * @summary Remove today's habit log
- */
-export const useUnlogHabit = <TError = ErrorType<unknown>,
+    export const useUnlogHabit = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlogHabit>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof unlogHabit>>,
@@ -862,9 +868,6 @@ export const getTranscribeAudioUrl = () => {
   return `/api/transcribe`
 }
 
-/**
- * @summary Transcribe audio and extract task with Gemini AI (multipart form-data with audio blob + userId field)
- */
 export const transcribeAudio = async (transcribeInput: TranscribeInput, options?: RequestInit): Promise<Task> => {
 
   return customFetch<Task>(getTranscribeAudioUrl(),
@@ -911,10 +914,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type TranscribeAudioMutationBody = BodyType<TranscribeInput>
     export type TranscribeAudioMutationError = ErrorType<unknown>
 
-    /**
- * @summary Transcribe audio and extract task with Gemini AI (multipart form-data with audio blob + userId field)
- */
-export const useTranscribeAudio = <TError = ErrorType<unknown>,
+    export const useTranscribeAudio = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribeAudio>>, TError,{data: BodyType<TranscribeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof transcribeAudio>>,

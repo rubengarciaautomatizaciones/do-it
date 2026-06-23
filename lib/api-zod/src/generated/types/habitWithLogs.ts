@@ -11,7 +11,10 @@ export interface HabitWithLogs {
   userId: string;
   nombre: string;
   frecuencia: string;
+  targetDays: number[];
+  archived: boolean;
+  currentStreak: number;
+  bestStreak: number;
   createdAt: string;
-  /** Array of ISO date strings where habit was completed (last 7 days) */
   logs: string[];
 }

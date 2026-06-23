@@ -12,6 +12,7 @@ export * from './habitInput';
 export * from './habitLog';
 export * from './habitWithLogs';
 export * from './healthStatus';
+export * from './magicTextInput';
 export * from './task';
 export * from './taskInput';
 export * from './taskStats';

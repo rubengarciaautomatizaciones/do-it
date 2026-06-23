@@ -8,8 +8,6 @@
 
 export interface TranscribeInput {
   userId: string;
-  /** Base64-encoded audio data */
   audioBase64: string;
-  /** MIME type of the audio (e.g. audio/webm) */
   mimeType: string;
 }

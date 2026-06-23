@@ -11,5 +11,9 @@ export interface Habit {
   userId: string;
   nombre: string;
   frecuencia: string;
+  targetDays: number[];
+  archived: boolean;
+  currentStreak: number;
+  bestStreak: number;
   createdAt: string;
 }

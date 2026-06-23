@@ -14,6 +14,10 @@ export interface Task {
   descripcion?: string | null;
   /** @nullable */
   fechaVencimiento?: string | null;
+  /** @nullable */
+  horaVencimiento?: string | null;
+  links?: string[];
+  notificaciones?: string[];
   completada: boolean;
   createdAt: string;
 }
