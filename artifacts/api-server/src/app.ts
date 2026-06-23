@@ -25,7 +25,6 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use((req: Request, res: Response, next: NextFunction) => {
   const uid = req.headers["x-user-id"];
   if (uid && typeof uid === "string") {
-    // Lo inyectamos donde las rutas originales esperan encontrarlo
     req.query.userId = req.query.userId || uid;
     if (req.body && typeof req.body === "object") {
       req.body.userId = req.body.userId || uid;
@@ -36,19 +35,20 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use("/api", router);
 
-// ESCUDO PROTECTOR (GLOBAL ERROR HANDLER MEJORADO PARA POSTGRES)
+// ESCUDO PROTECTOR DE DESEMPAQUETADO PROFUNDO (DEEP UNWRAP)
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  logger.error({ err }, "Excepción capturada en el Global Error Handler");
+  logger.error({ err }, "Excepción capturada");
 
-  // Extraemos toda la información útil que Postgres nos manda
+  // Drizzle a veces esconde el error de Postgres dentro de err.cause o err.originalError
+  const trueError = err.cause || err.originalError || err;
+
   res.status(500).json({ 
     error: "Internal Server Error", 
-    message: err.message || "Error desconocido",
-    pg_code: err.code || null,
-    pg_detail: err.detail || null,
-    pg_hint: err.hint || null,
-    pg_table: err.table || null,
-    pg_constraint: err.constraint || null
+    message: err.message,
+    real_cause: trueError.message || "No cause found",
+    pg_code: trueError.code || null,
+    pg_detail: trueError.detail || null,
+    pg_table: trueError.table || null
   });
 });
 
