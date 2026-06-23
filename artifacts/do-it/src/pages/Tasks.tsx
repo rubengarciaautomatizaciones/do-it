@@ -24,8 +24,8 @@ export default function Tasks() {
   return (
     <div className="h-[100dvh] flex flex-col bg-white overflow-hidden">
 
-      {/* HEADER FIJO */}
-      <div className="px-6 pt-12 pb-4 flex-shrink-0 w-full max-w-7xl mx-auto">
+      {/* HEADER FIJO (No hace scroll) */}
+      <div className="px-6 pt-12 pb-4 flex-shrink-0 w-full max-w-7xl mx-auto bg-white z-20">
         <h1 className="text-3xl font-semibold tracking-tight text-[#111111] mb-6">
           Tareas
         </h1>
@@ -38,7 +38,7 @@ export default function Tasks() {
         </Tabs>
       </div>
 
-      {/* ÁREA SCROLLABLE (TABLA O LISTA) */}
+      {/* ÁREA SCROLLABLE */}
       <div className="flex-1 overflow-y-auto relative px-6 w-full max-w-7xl mx-auto pb-40">
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
@@ -60,7 +60,7 @@ export default function Tasks() {
                   <th className="w-1/3 p-3 font-medium">Descripción</th>
                   <th className="w-32 p-3 font-medium">Fecha</th>
                   <th className="w-32 p-3 font-medium">Adjuntos</th>
-                  <th className="w-14 p-3 font-medium"></th>
+                  <th className="w-24 p-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody>

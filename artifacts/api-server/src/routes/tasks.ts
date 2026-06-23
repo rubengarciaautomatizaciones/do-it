@@ -172,5 +172,11 @@ router.get("/tasks/stats", async (req, res) => {
   const [todayRow] = await db.select({ completedToday: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.userId, userId), eq(tasksTable.completada, true), sql`date(${tasksTable.createdAt}) = ${today}`));
   return res.json({ total: totals.total, completed: totals.completed, pending: totals.total - totals.completed, completedToday: todayRow.completedToday });
 });
+// NUEVA RUTA: Eliminar un archivo adjunto
+router.delete("/tasks/:taskId/attachments/:attachmentId", async (req, res) => {
+  const { attachmentId } = req.params;
+  await db.delete(taskAttachmentsTable).where(eq(taskAttachmentsTable.id, attachmentId));
+  return res.status(204).send();
+});
 
 export default router;

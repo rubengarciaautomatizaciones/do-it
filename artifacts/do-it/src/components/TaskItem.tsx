@@ -1,15 +1,46 @@
 import React, { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useUpdateTask, useDeleteTask, useAddTaskAttachment, getGetTasksQueryKey, getGetTaskStatsQueryKey, Task } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Loader2, Mic, Clock } from 'lucide-react';
+import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Loader2, Mic, Clock, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
 import { RichTextEditor } from './RichTextEditor';
+
+// --- BOTÓN DE ELIMINAR ANIMADO ---
+function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => void }) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  return (
+    <div className="relative flex items-center justify-end h-8" onClick={e => e.stopPropagation()}>
+      <AnimatePresence mode="wait">
+        {!isConfirming ? (
+          <motion.button
+            key="trash"
+            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsConfirming(true); }}
+            className="text-gray-400 hover:text-black p-2 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </motion.button>
+        ) : (
+          <motion.button
+            key="confirm"
+            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(e); setIsConfirming(false); }}
+            className="bg-black text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm"
+          >
+            Eliminar
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 // --- COMPONENTE DE DETALLES COMPARTIDO ---
 function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
@@ -27,7 +58,7 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
 
   const handleDescriptionChange = (html: string) => {
     updateTask.mutate({ id: task.id, data: { descripcion: html } }, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) })
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() })
     });
   };
 
@@ -36,7 +67,7 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
     if (onClose) onClose(); 
     deleteTask.mutate({ id: task.id }, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
         toast({ title: "Tarea eliminada" });
       }
@@ -51,9 +82,25 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
       onSuccess: () => {
         setIsAddingLink(false);
         setNewLink("");
-        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
       }
     });
+  };
+
+  const removeLink = (linkToRemove: string) => {
+    const newLinks = task.links?.filter(l => l !== linkToRemove) || [];
+    updateTask.mutate({ id: task.id, data: { links: newLinks } }, {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() })
+    });
+  };
+
+  const removeAttachment = async (attId: string) => {
+    if (!user) return;
+    await fetch(`/api/tasks/${task.id}/attachments/${attId}`, {
+      method: 'DELETE',
+      headers: { 'x-user-id': user.id }
+    });
+    queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,7 +129,7 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
       data: { fileName: file.name, fileUrl: publicUrl, fileType: file.type }
     }, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
         toast({ title: "Archivo adjuntado" });
         setIsUploading(false);
       }
@@ -93,14 +140,13 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
     <div className="space-y-6 pt-2">
       <RichTextEditor content={task.descripcion || ''} onChange={handleDescriptionChange} />
 
-      {/* SELECTOR DE FECHA Y HORA NATIVO */}
       <div className="flex flex-wrap gap-4">
         <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
           <Calendar className="w-4 h-4 text-gray-500" />
           <input 
             type="date" 
             value={task.fechaVencimiento || ''} 
-            onChange={(e) => updateTask.mutate({ id: task.id, data: { fechaVencimiento: e.target.value || null } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) }) })}
+            onChange={(e) => updateTask.mutate({ id: task.id, data: { fechaVencimiento: e.target.value || null } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) })}
             className="bg-transparent border-0 p-0 text-sm text-gray-700 focus:ring-0 cursor-pointer outline-none"
           />
         </div>
@@ -109,7 +155,7 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
           <input 
             type="time" 
             value={task.horaVencimiento || ''} 
-            onChange={(e) => updateTask.mutate({ id: task.id, data: { horaVencimiento: e.target.value || null } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) }) })}
+            onChange={(e) => updateTask.mutate({ id: task.id, data: { horaVencimiento: e.target.value || null } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) })}
             className="bg-transparent border-0 p-0 text-sm text-gray-700 focus:ring-0 cursor-pointer outline-none"
           />
         </div>
@@ -119,20 +165,26 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
         {(task.links && task.links.length > 0) || (task.attachments && task.attachments.length > 0) ? (
           <div className="flex flex-col gap-2">
             {task.links?.map((link, i) => (
-              <a key={i} href={link.startsWith('http') ? link : `https://${link}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group/link">
-                <div className="bg-white p-2 rounded-lg shadow-sm group-hover/link:shadow"><LinkIcon className="w-4 h-4 text-blue-600" /></div>
-                <span className="text-sm text-gray-700 truncate flex-1">{link}</span>
-              </a>
+              <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl group/link">
+                <a href={link.startsWith('http') ? link : `https://${link}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="bg-white p-2 rounded-lg shadow-sm"><LinkIcon className="w-4 h-4 text-black" /></div>
+                  <span className="text-sm text-gray-700 truncate">{link}</span>
+                </a>
+                <button onClick={() => removeLink(link)} className="p-2 text-gray-400 hover:text-black rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+              </div>
             ))}
             {task.attachments?.map((att) => (
-              <a key={att.id} href={att.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group/file">
-                <div className="bg-white p-2 rounded-lg shadow-sm group-hover/file:shadow">
-                  {att.fileType.includes('audio') ? <Mic className="w-4 h-4 text-green-600" /> :
-                   att.fileType.includes('image') ? <ImageIcon className="w-4 h-4 text-purple-600" /> : 
-                   <File className="w-4 h-4 text-orange-600" />}
-                </div>
-                <span className="text-sm text-gray-700 truncate flex-1">{att.fileName}</span>
-              </a>
+              <div key={att.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl group/file">
+                <a href={att.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="bg-white p-2 rounded-lg shadow-sm">
+                    {att.fileType.includes('audio') ? <Mic className="w-4 h-4 text-black" /> :
+                     att.fileType.includes('image') ? <ImageIcon className="w-4 h-4 text-black" /> : 
+                     <File className="w-4 h-4 text-black" />}
+                  </div>
+                  <span className="text-sm text-gray-700 truncate">{att.fileName}</span>
+                </a>
+                <button onClick={() => removeAttachment(att.id)} className="p-2 text-gray-400 hover:text-black rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+              </div>
             ))}
           </div>
         ) : null}
@@ -158,8 +210,8 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
       </div>
 
       <div className="pt-4 border-t border-gray-100 flex justify-end">
-        <button onClick={handleDelete} className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 font-medium px-3 py-2 rounded-xl hover:bg-red-50 transition-colors">
-          <Trash2 className="w-4 h-4" /> Eliminar
+        <button onClick={handleDelete} className="bg-black text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-gray-800 transition-colors">
+          Eliminar tarea
         </button>
       </div>
     </div>
@@ -199,9 +251,16 @@ export function TaskItemMobile({ task }: { task: Task }) {
     e.preventDefault();
     e.stopPropagation();
     const newStatus = !task.completada;
+
+    // Actualización Optimista (Instantánea)
+    queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => {
+      if (!old) return old;
+      return old.map(t => t.id === task.id ? { ...t, completada: newStatus } : t);
+    });
+
     updateTask.mutate({ id: task.id, data: { completada: newStatus } }, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
       }
     });
@@ -224,7 +283,7 @@ export function TaskItemMobile({ task }: { task: Task }) {
           )}
         </div>
       </DialogTrigger>
-      <DialogContent className="bg-white/80 backdrop-blur-xl border border-gray-100/50 shadow-2xl w-[90%] max-w-sm rounded-3xl p-0 gap-0 overflow-hidden">
+      <DialogContent className="bg-white border border-gray-100/50 shadow-2xl w-[90%] max-w-sm rounded-3xl p-0 gap-0 overflow-hidden">
         <div className="p-6 border-b border-gray-100/50">
           <DialogTitle className="text-xl font-semibold text-gray-900 leading-tight pr-6">
             {task.titulo}
@@ -238,7 +297,7 @@ export function TaskItemMobile({ task }: { task: Task }) {
   );
 }
 
-// --- VISTA PC (Fila de Tabla que abre Modal) ---
+// --- VISTA PC ---
 export function TaskRowDesktop({ task }: { task: Task }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -249,26 +308,30 @@ export function TaskRowDesktop({ task }: { task: Task }) {
     e.preventDefault();
     e.stopPropagation();
     const newStatus = !task.completada;
+
+    // Actualización Optimista (Instantánea)
+    queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => {
+      if (!old) return old;
+      return old.map(t => t.id === task.id ? { ...t, completada: newStatus } : t);
+    });
+
     updateTask.mutate({ id: task.id, data: { completada: newStatus } }, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
       }
     });
   };
 
   const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
     deleteTask.mutate({ id: task.id }, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
       }
     });
   };
 
-  // Limpiar HTML de la descripción para la previsualización
   const plainTextDescription = task.descripcion ? task.descripcion.replace(/<[^>]*>?/gm, '') : '';
 
   return (
@@ -299,14 +362,12 @@ export function TaskRowDesktop({ task }: { task: Task }) {
               </div>
             )}
           </td>
-          <td className="p-3 text-right" onClick={e => e.stopPropagation()}>
-            <button onClick={handleDelete} className="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <Trash2 className="w-4 h-4" />
-            </button>
+          <td className="p-3 text-right">
+            <DeleteConfirmButton onDelete={handleDelete} />
           </td>
         </motion.tr>
       </DialogTrigger>
-      <DialogContent className="bg-white/80 backdrop-blur-xl border border-gray-100/50 shadow-2xl w-[90%] max-w-2xl rounded-3xl p-0 gap-0 overflow-hidden">
+      <DialogContent className="bg-white border border-gray-100/50 shadow-2xl w-[90%] max-w-2xl rounded-3xl p-0 gap-0 overflow-hidden">
         <div className="p-6 border-b border-gray-100/50">
           <DialogTitle className="text-2xl font-semibold text-gray-900 leading-tight pr-6">
             {task.titulo}
