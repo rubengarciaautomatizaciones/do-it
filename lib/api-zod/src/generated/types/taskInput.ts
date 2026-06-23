@@ -15,6 +15,14 @@ export interface TaskInput {
   fechaVencimiento?: string | null;
   /** @nullable */
   horaVencimiento?: string | null;
+  /** @nullable */
+  fechaNotificacion?: string | null;
+  /** @nullable */
+  horaNotificacion?: string | null;
+  /** @nullable */
+  proyecto?: string | null;
+  /** @nullable */
+  orden?: number | null;
   links?: string[];
   notificaciones?: string[];
   userId: string;

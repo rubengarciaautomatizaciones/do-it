@@ -529,6 +529,72 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getAddTaskAttachmentMutationOptions(options));
     }
 
+export const getDeleteTaskAttachmentUrl = (taskId: string,
+    attachmentId: string,) => {
+
+
+
+
+  return `/api/tasks/${taskId}/attachments/${attachmentId}`
+}
+
+export const deleteTaskAttachment = async (taskId: string,
+    attachmentId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteTaskAttachmentUrl(taskId,attachmentId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteTaskAttachmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTaskAttachment>>, TError,{taskId: string;attachmentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTaskAttachment>>, TError,{taskId: string;attachmentId: string}, TContext> => {
+
+const mutationKey = ['deleteTaskAttachment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTaskAttachment>>, {taskId: string;attachmentId: string}> = (props) => {
+          const {taskId,attachmentId} = props ?? {};
+
+          return  deleteTaskAttachment(taskId,attachmentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTaskAttachmentMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTaskAttachment>>>
+
+    export type DeleteTaskAttachmentMutationError = ErrorType<unknown>
+
+    export const useDeleteTaskAttachment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTaskAttachment>>, TError,{taskId: string;attachmentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTaskAttachment>>,
+        TError,
+        {taskId: string;attachmentId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteTaskAttachmentMutationOptions(options));
+    }
+
 export const getGetTaskStatsUrl = () => {
 
 

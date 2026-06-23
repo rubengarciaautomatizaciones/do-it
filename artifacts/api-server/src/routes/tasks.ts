@@ -21,10 +21,15 @@ const mapTask = (t: any) => ({
   descripcion: t.descripcion ?? null,
   fechaVencimiento: t.fechaVencimiento ?? null,
   horaVencimiento: t.horaVencimiento ?? null,
+  fechaNotificacion: t.fechaNotificacion ?? null,
+  horaNotificacion: t.horaNotificacion ?? null,
+  proyecto: t.proyecto ?? "General",
+  orden: t.orden ?? 0,
   links: (t.links as string[]) ?? [],
   notificaciones: (t.notificaciones as string[]) ?? [],
   completada: t.completada,
   createdAt: t.createdAt.toISOString(),
+  updatedAt: t.updatedAt.toISOString(),
 });
 
 router.get("/tasks", async (req, res) => {
@@ -40,7 +45,7 @@ router.get("/tasks", async (req, res) => {
     conditions.push(eq(tasksTable.completada, completed));
   }
 
-  const tasks = await db.select().from(tasksTable).where(and(...conditions)).orderBy(tasksTable.createdAt);
+  const tasks = await db.select().from(tasksTable).where(and(...conditions)).orderBy(tasksTable.orden, tasksTable.createdAt);
 
   // OBTENER ADJUNTOS PARA ESTAS TAREAS
   const taskIds = tasks.map(t => t.id);
@@ -148,9 +153,14 @@ router.patch("/tasks/:id", async (req, res) => {
     ...(updates.descripcion !== undefined && { descripcion: updates.descripcion }),
     ...(updates.fechaVencimiento !== undefined && { fechaVencimiento: updates.fechaVencimiento }),
     ...(updates.horaVencimiento !== undefined && { horaVencimiento: updates.horaVencimiento }),
+    ...(updates.fechaNotificacion !== undefined && { fechaNotificacion: updates.fechaNotificacion }),
+    ...(updates.horaNotificacion !== undefined && { horaNotificacion: updates.horaNotificacion }),
+    ...(updates.proyecto !== undefined && { proyecto: updates.proyecto }),
+    ...(updates.orden !== undefined && { orden: updates.orden }),
     ...(updates.links !== undefined && { links: updates.links }),
     ...(updates.notificaciones !== undefined && { notificaciones: updates.notificaciones }),
     ...(updates.completada !== undefined && { completada: updates.completada }),
+    updatedAt: new Date(), // Actualizamos la fecha de modificación
   }).where(eq(tasksTable.id, id)).returning();
 
   if (!task) return res.status(404).json({ error: "Task not found" });

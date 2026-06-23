@@ -24,10 +24,15 @@ export const GetTasksResponseItem = zod.object({
   "descripcion": zod.string().nullish(),
   "fechaVencimiento": zod.string().nullish(),
   "horaVencimiento": zod.string().nullish(),
+  "fechaNotificacion": zod.string().nullish(),
+  "horaNotificacion": zod.string().nullish(),
+  "proyecto": zod.string().nullish(),
+  "orden": zod.number().nullish(),
   "links": zod.array(zod.string()).optional(),
   "notificaciones": zod.array(zod.string()).optional(),
   "completada": zod.boolean(),
   "createdAt": zod.string(),
+  "updatedAt": zod.string(),
   "attachments": zod.array(zod.object({
   "id": zod.string(),
   "taskId": zod.string(),
@@ -48,6 +53,10 @@ export const CreateTaskBody = zod.object({
   "descripcion": zod.string().nullish(),
   "fechaVencimiento": zod.string().nullish(),
   "horaVencimiento": zod.string().nullish(),
+  "fechaNotificacion": zod.string().nullish(),
+  "horaNotificacion": zod.string().nullish(),
+  "proyecto": zod.string().nullish(),
+  "orden": zod.number().nullish(),
   "links": zod.array(zod.string()).optional(),
   "notificaciones": zod.array(zod.string()).optional(),
   "userId": zod.string()
@@ -75,6 +84,10 @@ export const UpdateTaskBody = zod.object({
   "descripcion": zod.string().nullish(),
   "fechaVencimiento": zod.string().nullish(),
   "horaVencimiento": zod.string().nullish(),
+  "fechaNotificacion": zod.string().nullish(),
+  "horaNotificacion": zod.string().nullish(),
+  "proyecto": zod.string().nullish(),
+  "orden": zod.number().nullish(),
   "links": zod.array(zod.string()).optional(),
   "notificaciones": zod.array(zod.string()).optional(),
   "completada": zod.boolean().optional()
@@ -87,10 +100,15 @@ export const UpdateTaskResponse = zod.object({
   "descripcion": zod.string().nullish(),
   "fechaVencimiento": zod.string().nullish(),
   "horaVencimiento": zod.string().nullish(),
+  "fechaNotificacion": zod.string().nullish(),
+  "horaNotificacion": zod.string().nullish(),
+  "proyecto": zod.string().nullish(),
+  "orden": zod.number().nullish(),
   "links": zod.array(zod.string()).optional(),
   "notificaciones": zod.array(zod.string()).optional(),
   "completada": zod.boolean(),
   "createdAt": zod.string(),
+  "updatedAt": zod.string(),
   "attachments": zod.array(zod.object({
   "id": zod.string(),
   "taskId": zod.string(),
@@ -115,6 +133,12 @@ export const AddTaskAttachmentBody = zod.object({
   "fileName": zod.string(),
   "fileUrl": zod.string(),
   "fileType": zod.string()
+})
+
+
+export const DeleteTaskAttachmentParams = zod.object({
+  "taskId": zod.coerce.string(),
+  "attachmentId": zod.coerce.string()
 })
 
 
