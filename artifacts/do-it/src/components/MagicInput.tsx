@@ -1,17 +1,19 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { Mic, Send } from 'lucide-react';
 import { useCreateTask, useTranscribeAudio, getGetTasksQueryKey, getGetTaskStatsQueryKey } from '@workspace/api-client-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { useToast } from '../hooks/use-toast';
 
 export function MagicInput() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  
+
   const queryClient = useQueryClient();
   const createTask = useCreateTask();
   const transcribeAudio = useTranscribeAudio();
@@ -27,6 +29,14 @@ export function MagicInput() {
           setText('');
           queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
+        },
+        onError: (error: any) => {
+          console.error("Error completo:", error);
+          toast({
+            title: "Error al guardar tarea",
+            description: error?.data?.message || "Revisa la configuración de la base de datos.",
+            variant: "destructive"
+          });
         }
       }
     );
@@ -50,11 +60,21 @@ export function MagicInput() {
         reader.onloadend = () => {
           const base64data = (reader.result as string).split(',')[1];
           if (user) {
+            toast({ title: "Procesando audio...", description: "Gemini está analizando tu nota de voz." });
             transcribeAudio.mutate(
               { data: { userId: user.id, audioBase64: base64data, mimeType: 'audio/webm' } },
               {
                 onSuccess: () => {
                   queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
+                  toast({ title: "¡Tarea mágica creada!" });
+                },
+                onError: (error: any) => {
+                  console.error("Error en Gemini:", error);
+                  toast({
+                    title: "Error con la IA",
+                    description: error?.data?.message || "Asegúrate de que GEMINI_API_KEY es correcta.",
+                    variant: "destructive"
+                  });
                 }
               }
             );
@@ -66,7 +86,8 @@ export function MagicInput() {
       mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
-      console.error('Error accessing microphone:', err);
+      console.error('Error accediendo al micrófono:', err);
+      toast({ title: "Sin micrófono", description: "Otorga permisos para usar la voz.", variant: "destructive" });
     }
   };
 
