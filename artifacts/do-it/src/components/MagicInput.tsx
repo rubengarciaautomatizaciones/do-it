@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Mic, Send, Loader2 } from 'lucide-react';
-import { useCreateMagicTextTask, useTranscribeAudio, getGetTasksQueryKey, getGetTaskStatsQueryKey } from '@workspace/api-client-react';
+import { Mic, Send, Loader2, Plus } from 'lucide-react';
+import { useCreateTask, useTranscribeAudio, useAddTaskAttachment, getGetTasksQueryKey, getGetTaskStatsQueryKey } from '@workspace/api-client-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useToast } from '../hooks/use-toast';
+import { supabase } from '../lib/supabase';
 
 export function MagicInput() {
   const { user } = useAuth();
@@ -15,22 +16,22 @@ export function MagicInput() {
   const chunksRef = useRef<Blob[]>([]);
 
   const queryClient = useQueryClient();
-  const createTextTask = useCreateMagicTextTask();
+  const createTask = useCreateTask(); // AHORA USAMOS CREACIÓN DIRECTA, SIN IA
   const transcribeAudio = useTranscribeAudio();
+  const addAttachment = useAddTaskAttachment();
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim() || !user) return;
 
-    toast({ title: "Pensando...", description: "Generando tarea con IA" });
-
-    createTextTask.mutate(
-      { data: { text: text.trim(), userId: user.id } },
+    createTask.mutate(
+      { data: { titulo: text.trim(), userId: user.id } },
       {
         onSuccess: () => {
           setText('');
           queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
+          toast({ title: "Tarea creada" });
         },
         onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
       }
@@ -38,6 +39,8 @@ export function MagicInput() {
   };
 
   const startRecording = async () => {
+    if (isRecording || transcribeAudio.isPending) return; // BLOQUEO ANTI-BUGS
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -50,22 +53,51 @@ export function MagicInput() {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = () => {
-          const base64data = (reader.result as string).split(',')[1];
-          if (user) {
-            toast({ title: "Procesando audio...", description: "Gemini está analizando tu nota de voz." });
+        stream.getTracks().forEach(track => track.stop());
+
+        if (!user) return;
+        toast({ title: "Procesando audio...", description: "Subiendo y analizando con IA." });
+
+        try {
+          // 1. Subir audio bruto a Supabase Storage (Backup)
+          const fileName = `voz-${Date.now()}.webm`;
+          const filePath = `${user.id}/${fileName}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage.from('attachments').upload(filePath, audioBlob);
+
+          let publicUrl = "";
+          if (!uploadError && uploadData) {
+            const { data } = supabase.storage.from('attachments').getPublicUrl(uploadData.path);
+            publicUrl = data.publicUrl;
+          }
+
+          // 2. Extraer Base64 para Gemini
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = () => {
+            const base64data = (reader.result as string).split(',')[1];
+
+            // 3. Llamar a la IA
             transcribeAudio.mutate(
               { data: { userId: user.id, audioBase64: base64data, mimeType: 'audio/webm' } },
               {
-                onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }),
+                onSuccess: (newTask) => {
+                  // 4. Adjuntar el audio a la tarea creada
+                  if (publicUrl) {
+                    addAttachment.mutate({
+                      id: newTask.id,
+                      data: { fileName: 'Nota de voz', fileUrl: publicUrl, fileType: 'audio/webm' }
+                    });
+                  }
+                  queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
+                  toast({ title: "¡Tarea extraída con éxito!" });
+                },
                 onError: (err: any) => toast({ title: "Error IA", description: err.message, variant: "destructive" })
               }
             );
-          }
-        };
-        stream.getTracks().forEach(track => track.stop());
+          };
+        } catch (error) {
+          toast({ title: "Error", description: "Fallo al procesar el audio", variant: "destructive" });
+        }
       };
 
       mediaRecorder.start();
@@ -82,17 +114,18 @@ export function MagicInput() {
     }
   };
 
-  const isWorking = createTextTask.isPending || transcribeAudio.isPending;
+  const isWorking = createTask.isPending || transcribeAudio.isPending;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto">
+    <div className="fixed bottom-24 left-4 right-4 z-40 max-w-md mx-auto md:hidden">
+      {/* OCULTO EN PC (md:hidden) PORQUE EN PC USAMOS LA TABLA */}
       <form onSubmit={handleTextSubmit} className="relative flex items-center shadow-lg rounded-full">
         <input
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={isWorking}
-          placeholder="Escribe o usa tu voz..."
+          placeholder="Escribe una tarea..."
           className="w-full bg-white/90 backdrop-blur-md border border-gray-100 rounded-full py-4 pl-6 pr-14 text-base focus:ring-1 focus:ring-black placeholder:text-gray-400"
         />
         {isWorking ? (
@@ -101,7 +134,7 @@ export function MagicInput() {
           </div>
         ) : text ? (
           <button type="submit" className="absolute right-2 p-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors">
-            <Send className="w-5 h-5" />
+            <Plus className="w-5 h-5" />
           </button>
         ) : (
           <button

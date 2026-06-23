@@ -1,52 +1,44 @@
 import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useUpdateTask, useDeleteTask, useAddTaskAttachment, getGetTasksQueryKey, getGetTaskStatsQueryKey } from '@workspace/api-client-react';
-import { Task } from '@workspace/api-client-react';
+import { motion } from 'framer-motion';
+import { useUpdateTask, useDeleteTask, useAddTaskAttachment, getGetTasksQueryKey, getGetTaskStatsQueryKey, Task } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trash2, Link as LinkIcon, AlignLeft, Paperclip, Plus, File, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { useIsMobile } from '../hooks/use-mobile';
+import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Loader2, Mic } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
+import { RichTextEditor } from './RichTextEditor';
 
-interface TaskItemProps { task: Task; }
-
-export function TaskItem({ task }: TaskItemProps) {
+// --- COMPONENTE DE DETALLES COMPARTIDO (TipTap, Enlaces, Archivos) ---
+function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const addAttachment = useAddTaskAttachment();
-  const isMobile = useIsMobile();
 
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isAddingLink, setIsAddingLink] = useState(false);
   const [newLink, setNewLink] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const toggleComplete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newStatus = !task.completada;
-    queryClient.setQueryData(getGetTasksQueryKey({}), (old: Task[] | undefined) => {
-      if (!old) return old;
-      return old.map(t => t.id === task.id ? { ...t, completada: newStatus } : t);
-    });
-    updateTask.mutate({ id: task.id, data: { completada: newStatus } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
-        queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
-      }
+  const handleDescriptionChange = (html: string) => {
+    updateTask.mutate({ id: task.id, data: { descripcion: html } }, {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) })
     });
   };
 
   const handleDelete = () => {
+    if (onClose) onClose(); // Cierra el modal antes de borrar para evitar bugs visuales
     deleteTask.mutate({ id: task.id }, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) })
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
+        toast({ title: "Tarea eliminada" });
+      }
     });
   };
 
@@ -96,56 +88,10 @@ export function TaskItem({ task }: TaskItemProps) {
     });
   };
 
-  const Row = () => (
-    <div className="flex items-start gap-4 py-3 group cursor-pointer hover:bg-gray-50/50 rounded-xl px-2 transition-colors -mx-2">
-      <button onClick={toggleComplete} className="mt-1 flex-shrink-0 focus:outline-none">
-        <motion.div
-          animate={task.completada ? "checked" : "unchecked"}
-          variants={{
-            checked: { scale: [1, 0.8, 1.1, 1], backgroundColor: "#111111", borderColor: "#111111" },
-            unchecked: { scale: 1, backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }
-          }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
-        >
-          {task.completada && (
-            <motion.svg initial={{ opacity: 0, pathLength: 0 }} animate={{ opacity: 1, pathLength: 1 }} className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </motion.svg>
-          )}
-        </motion.div>
-      </button>
-      <div className="flex-1 min-w-0 pt-0.5">
-        <p className={`text-[15px] leading-tight transition-colors duration-200 ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
-          {task.titulo}
-        </p>
-        {!isExpanded && (task.descripcion || task.fechaVencimiento || task.attachments?.length || task.links?.length) && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-gray-400">
-            {task.fechaVencimiento && <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {format(new Date(task.fechaVencimiento), "d MMM", { locale: es })}</span>}
-            {task.attachments && task.attachments.length > 0 && <span className="flex items-center gap-1"><Paperclip className="w-3 h-3"/> {task.attachments.length}</span>}
-            {task.links && task.links.length > 0 && <span className="flex items-center gap-1"><LinkIcon className="w-3 h-3"/> {task.links.length}</span>}
-            {task.descripcion && <span className="flex items-center gap-1 truncate"><AlignLeft className="w-3 h-3"/> {task.descripcion}</span>}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const Details = () => (
-    <div className="pl-11 pr-2 pb-4 space-y-5">
-      {task.descripcion && (
-        <div className="bg-gray-50/80 rounded-xl p-3.5 text-[15px] leading-relaxed text-gray-600 whitespace-pre-wrap shadow-sm">
-          {task.descripcion}
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-2">
-        <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg text-sm text-gray-600 font-medium">
-          <Calendar className="w-4 h-4" /> 
-          {task.fechaVencimiento ? format(new Date(task.fechaVencimiento), "EEEE d 'de' MMMM", { locale: es }) : "Sin fecha"}
-          {task.horaVencimiento && ` • ${task.horaVencimiento}`}
-        </div>
-      </div>
+  return (
+    <div className="space-y-6 pt-2">
+      {/* Editor TipTap */}
+      <RichTextEditor content={task.descripcion || ''} onChange={handleDescriptionChange} />
 
       {/* Enlaces y Archivos */}
       <div className="space-y-3">
@@ -160,7 +106,9 @@ export function TaskItem({ task }: TaskItemProps) {
             {task.attachments?.map((att) => (
               <a key={att.id} href={att.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group/file">
                 <div className="bg-white p-2 rounded-lg shadow-sm group-hover/file:shadow">
-                  {att.fileType.includes('image') ? <ImageIcon className="w-4 h-4 text-purple-600" /> : <File className="w-4 h-4 text-orange-600" />}
+                  {att.fileType.includes('audio') ? <Mic className="w-4 h-4 text-green-600" /> :
+                   att.fileType.includes('image') ? <ImageIcon className="w-4 h-4 text-purple-600" /> : 
+                   <File className="w-4 h-4 text-orange-600" />}
                 </div>
                 <span className="text-sm text-gray-700 truncate flex-1">{att.fileName}</span>
               </a>
@@ -169,7 +117,7 @@ export function TaskItem({ task }: TaskItemProps) {
         ) : null}
 
         {/* Botones de acción rápidos */}
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-2">
           {isAddingLink ? (
             <form onSubmit={handleAddLink} className="flex flex-1 gap-2">
               <input autoFocus type="text" value={newLink} onChange={e => setNewLink(e.target.value)} placeholder="https://..." className="flex-1 text-sm bg-gray-50 border-0 rounded-lg px-3 py-2 focus:ring-1 focus:ring-black" />
@@ -196,39 +144,137 @@ export function TaskItem({ task }: TaskItemProps) {
       </div>
     </div>
   );
+}
 
-  if (isMobile) {
-    return (
-      <Dialog open={isExpanded} onOpenChange={setIsExpanded}>
-        <DialogTrigger asChild>
-          <div><Row /></div>
-        </DialogTrigger>
-        <DialogContent className="bg-white/80 backdrop-blur-xl border border-gray-100/50 shadow-2xl w-[90%] max-w-sm rounded-3xl p-0 gap-0 overflow-hidden">
-          <div className="p-6 border-b border-gray-100/50">
-            <DialogTitle className="text-xl font-semibold text-gray-900 leading-tight pr-6">
-              {task.titulo}
-            </DialogTitle>
-          </div>
-          <div className="p-6 max-h-[70vh] overflow-y-auto">
-            <Details />
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+// --- CHECKBOX ANIMADO COMPARTIDO ---
+function Checkbox({ completada, onToggle }: { completada: boolean, onToggle: (e: React.MouseEvent) => void }) {
+  return (
+    <button onClick={onToggle} className="flex-shrink-0 focus:outline-none flex items-center justify-center w-8 h-8">
+      <motion.div
+        animate={completada ? "checked" : "unchecked"}
+        variants={{
+          checked: { scale: [1, 0.8, 1.1, 1], backgroundColor: "#111111", borderColor: "#111111" },
+          unchecked: { scale: 1, backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }
+        }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
+      >
+        {completada && (
+          <motion.svg initial={{ opacity: 0, pathLength: 0 }} animate={{ opacity: 1, pathLength: 1 }} className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </motion.svg>
+        )}
+      </motion.div>
+    </button>
+  );
+}
+
+// --- VISTA MÓVIL (Lista + Modal) ---
+export function TaskItemMobile({ task }: { task: Task }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const updateTask = useUpdateTask();
+
+  const toggleComplete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newStatus = !task.completada;
+    updateTask.mutate({ id: task.id, data: { completada: newStatus } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
+      }
+    });
+  };
 
   return (
-    <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }} className="border-b border-gray-50 last:border-0">
-      <div onClick={() => setIsExpanded(!isExpanded)}>
-        <Row />
-      </div>
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <Details />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <div className="flex items-center gap-3 py-3 px-2 hover:bg-gray-50/50 rounded-xl cursor-pointer transition-colors">
+          <Checkbox completada={task.completada} onToggle={toggleComplete} />
+          <div className="flex-1 min-w-0">
+            <p className={`text-[15px] leading-tight truncate ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+              {task.titulo}
+            </p>
+          </div>
+          {task.fechaVencimiento && (
+            <span className="text-xs text-gray-400 flex items-center gap-1 flex-shrink-0">
+              <Calendar className="w-3 h-3"/> {format(new Date(task.fechaVencimiento), "d MMM", { locale: es })}
+            </span>
+          )}
+        </div>
+      </DialogTrigger>
+      <DialogContent className="bg-white/80 backdrop-blur-xl border border-gray-100/50 shadow-2xl w-[90%] max-w-sm rounded-3xl p-0 gap-0 overflow-hidden">
+        <div className="p-6 border-b border-gray-100/50">
+          <DialogTitle className="text-xl font-semibold text-gray-900 leading-tight pr-6">
+            {task.titulo}
+          </DialogTitle>
+        </div>
+        <div className="p-6 max-h-[70vh] overflow-y-auto">
+          <TaskDetails task={task} onClose={() => setIsOpen(false)} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- VISTA PC (Fila de Tabla + Acordeón) ---
+export function TaskRowDesktop({ task }: { task: Task }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const queryClient = useQueryClient();
+  const updateTask = useUpdateTask();
+
+  const toggleComplete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newStatus = !task.completada;
+    updateTask.mutate({ id: task.id, data: { completada: newStatus } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey({}) });
+        queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
+      }
+    });
+  };
+
+  return (
+    <>
+      <motion.tr 
+        layout
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className={`group border-b border-gray-50 hover:bg-gray-50/30 transition-colors cursor-pointer ${isExpanded ? 'bg-gray-50/30' : ''}`}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <td className="p-2 text-center">
+          <Checkbox completada={task.completada} onToggle={toggleComplete} />
+        </td>
+        <td className={`p-3 ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+          {task.titulo}
+        </td>
+        <td className="p-3 text-gray-500 text-sm">
+          {task.fechaVencimiento ? format(new Date(task.fechaVencimiento), "d MMM yyyy", { locale: es }) : '-'}
+        </td>
+        <td className="p-3 text-gray-500 text-sm">
+          <div className="flex items-center gap-2">
+            {task.attachments?.length > 0 && <span className="flex items-center gap-1"><Paperclip className="w-3 h-3"/> {task.attachments.length}</span>}
+            {task.links?.length > 0 && <span className="flex items-center gap-1"><LinkIcon className="w-3 h-3"/> {task.links.length}</span>}
+            {!task.attachments?.length && !task.links?.length && '-'}
+          </div>
+        </td>
+        <td className="p-3 text-right">
+          <button onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }} className="text-gray-400 hover:text-black text-xs font-medium px-2 py-1 rounded hover:bg-gray-100">
+            {isExpanded ? 'Cerrar' : 'Abrir'}
+          </button>
+        </td>
+      </motion.tr>
+      {isExpanded && (
+        <tr>
+          <td colSpan={5} className="p-0 border-b border-gray-100 bg-gray-50/10">
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="overflow-hidden">
+              <div className="p-6 max-w-3xl">
+                <TaskDetails task={task} onClose={() => setIsExpanded(false)} />
+              </div>
+            </motion.div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
