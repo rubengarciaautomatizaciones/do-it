@@ -9,6 +9,21 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface TaskAttachment {
+  id: string;
+  taskId: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  createdAt: string;
+}
+
+export interface AddTaskAttachmentBody {
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+}
+
 export interface Task {
   id: string;
   userId: string;
@@ -23,6 +38,7 @@ export interface Task {
   notificaciones?: string[];
   completada: boolean;
   createdAt: string;
+  attachments: TaskAttachment[];
 }
 
 export interface TaskInput {

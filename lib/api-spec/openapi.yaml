@@ -1,334 +1,381 @@
-openapi: 3.1.0
-info:
-  title: Api
-  version: 0.1.0
-  description: Do it - Productivity PWA API
-servers:
-  - url: /api
-tags:
-  - name: health
-  - name: tasks
-  - name: habits
-  - name: transcribe
-paths:
-  /healthz:
-    get:
-      operationId: healthCheck
-      tags: [health]
-      responses:
-        "200":
-          description: Healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
+                 openapi: 3.1.0
+                 info:
+                   title: Api
+                   version: 0.1.0
+                   description: Do it - Productivity PWA API
+                 servers:
+                   - url: /api
+                 tags:
+                   - name: health
+                   - name: tasks
+                   - name: habits
+                   - name: transcribe
+                 paths:
+                   /healthz:
+                     get:
+                       operationId: healthCheck
+                       tags: [health]
+                       responses:
+                         "200":
+                           description: Healthy
+                           content:
+                             application/json:
+                               schema:
+                                 $ref: "#/components/schemas/HealthStatus"
 
-  /tasks:
-    get:
-      operationId: getTasks
-      tags: [tasks]
-      parameters:
-        - in: query
-          name: completed
-          schema:
-            type: boolean
-      responses:
-        "200":
-          description: List of tasks
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Task"
-    post:
-      operationId: createTask
-      tags: [tasks]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TaskInput"
-      responses:
-        "201":
-          description: Created task
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Task"
+                   /tasks:
+                     get:
+                       operationId: getTasks
+                       tags: [tasks]
+                       parameters:
+                         - in: query
+                           name: completed
+                           schema:
+                             type: boolean
+                       responses:
+                         "200":
+                           description: List of tasks
+                           content:
+                             application/json:
+                               schema:
+                                 type: array
+                                 items:
+                                   $ref: "#/components/schemas/Task"
+                     post:
+                       operationId: createTask
+                       tags: [tasks]
+                       requestBody:
+                         required: true
+                         content:
+                           application/json:
+                             schema:
+                               $ref: "#/components/schemas/TaskInput"
+                       responses:
+                         "201":
+                           description: Created task
+                           content:
+                             application/json:
+                               schema:
+                                 $ref: "#/components/schemas/Task"
 
-  /tasks/magic-text:
-    post:
-      operationId: createMagicTextTask
-      tags: [tasks]
-      summary: Procesa texto libre con Gemini para crear la tarea
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MagicTextInput"
-      responses:
-        "201":
-          description: Task extracted and saved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Task"
+                   /tasks/magic-text:
+                     post:
+                       operationId: createMagicTextTask
+                       tags: [tasks]
+                       summary: Procesa texto libre con Gemini para crear la tarea
+                       requestBody:
+                         required: true
+                         content:
+                           application/json:
+                             schema:
+                               $ref: "#/components/schemas/MagicTextInput"
+                       responses:
+                         "201":
+                           description: Task extracted and saved
+                           content:
+                             application/json:
+                               schema:
+                                 $ref: "#/components/schemas/Task"
 
-  /tasks/{id}:
-    patch:
-      operationId: updateTask
-      tags: [tasks]
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TaskUpdate"
-      responses:
-        "200":
-          description: Updated task
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Task"
-    delete:
-      operationId: deleteTask
-      tags: [tasks]
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Deleted
+                   /tasks/{id}:
+                     patch:
+                       operationId: updateTask
+                       tags: [tasks]
+                       parameters:
+                         - in: path
+                           name: id
+                           required: true
+                           schema:
+                             type: string
+                       requestBody:
+                         required: true
+                         content:
+                           application/json:
+                             schema:
+                               $ref: "#/components/schemas/TaskUpdate"
+                       responses:
+                         "200":
+                           description: Updated task
+                           content:
+                             application/json:
+                               schema:
+                                 $ref: "#/components/schemas/Task"
+                     delete:
+                       operationId: deleteTask
+                       tags: [tasks]
+                       parameters:
+                         - in: path
+                           name: id
+                           required: true
+                           schema:
+                             type: string
+                       responses:
+                         "204":
+                           description: Deleted
 
-  /tasks/stats:
-    get:
-      operationId: getTaskStats
-      tags: [tasks]
-      responses:
-        "200":
-          description: Task statistics
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TaskStats"
+                   /tasks/{id}/attachments:
+                     post:
+                       operationId: addTaskAttachment
+                       tags: [tasks]
+                       parameters:
+                         - in: path
+                           name: id
+                           required: true
+                           schema:
+                             type: string
+                       requestBody:
+                         required: true
+                         content:
+                           application/json:
+                             schema:
+                               $ref: "#/components/schemas/AddTaskAttachmentBody"
+                       responses:
+                         "201":
+                           description: Attachment linked
+                           content:
+                             application/json:
+                               schema:
+                                 $ref: "#/components/schemas/TaskAttachment"
 
-  /habits:
-    get:
-      operationId: getHabits
-      tags: [habits]
-      responses:
-        "200":
-          description: List of habits
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/HabitWithLogs"
-    post:
-      operationId: createHabit
-      tags: [habits]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/HabitInput"
-      responses:
-        "201":
-          description: Created habit
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Habit"
+                   /tasks/stats:
+                     get:
+                       operationId: getTaskStats
+                       tags: [tasks]
+                       responses:
+                         "200":
+                           description: Task statistics
+                           content:
+                             application/json:
+                               schema:
+                                 $ref: "#/components/schemas/TaskStats"
 
-  /habits/{id}:
-    delete:
-      operationId: deleteHabit
-      tags: [habits]
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Deleted
+                   /habits:
+                     get:
+                       operationId: getHabits
+                       tags: [habits]
+                       responses:
+                         "200":
+                           description: List of habits
+                           content:
+                             application/json:
+                               schema:
+                                 type: array
+                                 items:
+                                   $ref: "#/components/schemas/HabitWithLogs"
+                     post:
+                       operationId: createHabit
+                       tags: [habits]
+                       requestBody:
+                         required: true
+                         content:
+                           application/json:
+                             schema:
+                               $ref: "#/components/schemas/HabitInput"
+                       responses:
+                         "201":
+                           description: Created habit
+                           content:
+                             application/json:
+                               schema:
+                                 $ref: "#/components/schemas/Habit"
 
-  /habits/{id}/log:
-    post:
-      operationId: logHabit
-      tags: [habits]
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        "201":
-          description: Logged
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HabitLog"
-    delete:
-      operationId: unlogHabit
-      tags: [habits]
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Removed
+                   /habits/{id}:
+                     delete:
+                       operationId: deleteHabit
+                       tags: [habits]
+                       parameters:
+                         - in: path
+                           name: id
+                           required: true
+                           schema:
+                             type: string
+                       responses:
+                         "204":
+                           description: Deleted
 
-  /transcribe:
-    post:
-      operationId: transcribeAudio
-      tags: [transcribe]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TranscribeInput"
-      responses:
-        "201":
-          description: Task extracted and saved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Task"
+                   /habits/{id}/log:
+                     post:
+                       operationId: logHabit
+                       tags: [habits]
+                       parameters:
+                         - in: path
+                           name: id
+                           required: true
+                           schema:
+                             type: string
+                       responses:
+                         "201":
+                           description: Logged
+                           content:
+                             application/json:
+                               schema:
+                                 $ref: "#/components/schemas/HabitLog"
+                     delete:
+                       operationId: unlogHabit
+                       tags: [habits]
+                       parameters:
+                         - in: path
+                           name: id
+                           required: true
+                           schema:
+                             type: string
+                       responses:
+                         "204":
+                           description: Removed
 
-components:
-  schemas:
-    HealthStatus:
-      type: object
-      properties:
-        status: { type: string }
-      required: [status]
+                   /transcribe:
+                     post:
+                       operationId: transcribeAudio
+                       tags: [transcribe]
+                       requestBody:
+                         required: true
+                         content:
+                           application/json:
+                             schema:
+                               $ref: "#/components/schemas/TranscribeInput"
+                       responses:
+                         "201":
+                           description: Task extracted and saved
+                           content:
+                             application/json:
+                               schema:
+                                 $ref: "#/components/schemas/Task"
 
-    Task:
-      type: object
-      required: [id, userId, titulo, completada, createdAt]
-      properties:
-        id: { type: string }
-        userId: { type: string }
-        titulo: { type: string }
-        descripcion: { type: ["string", "null"] }
-        fechaVencimiento: { type: ["string", "null"] }
-        horaVencimiento: { type: ["string", "null"] }
-        links: { type: array, items: { type: string } }
-        notificaciones: { type: array, items: { type: string } }
-        completada: { type: boolean }
-        createdAt: { type: string }
+                 components:
+                   schemas:
+                     HealthStatus:
+                       type: object
+                       properties:
+                         status: { type: string }
+                       required: [status]
 
-    TaskInput:
-      type: object
-      required: [titulo, userId]
-      properties:
-        titulo: { type: string, minLength: 1 }
-        descripcion: { type: ["string", "null"] }
-        fechaVencimiento: { type: ["string", "null"] }
-        horaVencimiento: { type: ["string", "null"] }
-        links: { type: array, items: { type: string } }
-        notificaciones: { type: array, items: { type: string } }
-        userId: { type: string }
+                     TaskAttachment:
+                       type: object
+                       required: [id, taskId, fileName, fileUrl, fileType, createdAt]
+                       properties:
+                         id: { type: string }
+                         taskId: { type: string }
+                         fileName: { type: string }
+                         fileUrl: { type: string }
+                         fileType: { type: string }
+                         createdAt: { type: string }
 
-    MagicTextInput:
-      type: object
-      required: [text, userId]
-      properties:
-        text: { type: string, minLength: 1 }
-        userId: { type: string }
+                     AddTaskAttachmentBody:
+                       type: object
+                       required: [fileName, fileUrl, fileType]
+                       properties:
+                         fileName: { type: string }
+                         fileUrl: { type: string }
+                         fileType: { type: string }
 
-    TaskUpdate:
-      type: object
-      properties:
-        titulo: { type: string }
-        descripcion: { type: ["string", "null"] }
-        fechaVencimiento: { type: ["string", "null"] }
-        horaVencimiento: { type: ["string", "null"] }
-        links: { type: array, items: { type: string } }
-        notificaciones: { type: array, items: { type: string } }
-        completada: { type: boolean }
+                     Task:
+                       type: object
+                       required: [id, userId, titulo, completada, createdAt, attachments]
+                       properties:
+                         id: { type: string }
+                         userId: { type: string }
+                         titulo: { type: string }
+                         descripcion: { type: ["string", "null"] }
+                         fechaVencimiento: { type: ["string", "null"] }
+                         horaVencimiento: { type: ["string", "null"] }
+                         links: { type: array, items: { type: string } }
+                         notificaciones: { type: array, items: { type: string } }
+                         completada: { type: boolean }
+                         createdAt: { type: string }
+                         attachments: 
+                           type: array
+                           items:
+                             $ref: "#/components/schemas/TaskAttachment"
 
-    TaskStats:
-      type: object
-      required: [total, completed, pending, completedToday]
-      properties:
-        total: { type: integer }
-        completed: { type: integer }
-        pending: { type: integer }
-        completedToday: { type: integer }
+                     TaskInput:
+                       type: object
+                       required: [titulo, userId]
+                       properties:
+                         titulo: { type: string, minLength: 1 }
+                         descripcion: { type: ["string", "null"] }
+                         fechaVencimiento: { type: ["string", "null"] }
+                         horaVencimiento: { type: ["string", "null"] }
+                         links: { type: array, items: { type: string } }
+                         notificaciones: { type: array, items: { type: string } }
+                         userId: { type: string }
 
-    Habit:
-      type: object
-      required: [id, userId, nombre, frecuencia, createdAt, targetDays, archived, currentStreak, bestStreak]
-      properties:
-        id: { type: string }
-        userId: { type: string }
-        nombre: { type: string }
-        frecuencia: { type: string }
-        targetDays: { type: array, items: { type: number } }
-        archived: { type: boolean }
-        currentStreak: { type: integer }
-        bestStreak: { type: integer }
-        createdAt: { type: string }
+                     MagicTextInput:
+                       type: object
+                       required: [text, userId]
+                       properties:
+                         text: { type: string, minLength: 1 }
+                         userId: { type: string }
 
-    HabitWithLogs:
-      type: object
-      required: [id, userId, nombre, frecuencia, createdAt, logs, targetDays, archived, currentStreak, bestStreak]
-      properties:
-        id: { type: string }
-        userId: { type: string }
-        nombre: { type: string }
-        frecuencia: { type: string }
-        targetDays: { type: array, items: { type: number } }
-        archived: { type: boolean }
-        currentStreak: { type: integer }
-        bestStreak: { type: integer }
-        createdAt: { type: string }
-        logs: { type: array, items: { type: string } }
+                     TaskUpdate:
+                       type: object
+                       properties:
+                         titulo: { type: string }
+                         descripcion: { type: ["string", "null"] }
+                         fechaVencimiento: { type: ["string", "null"] }
+                         horaVencimiento: { type: ["string", "null"] }
+                         links: { type: array, items: { type: string } }
+                         notificaciones: { type: array, items: { type: string } }
+                         completada: { type: boolean }
 
-    HabitInput:
-      type: object
-      required: [nombre, userId]
-      properties:
-        nombre: { type: string, minLength: 1 }
-        frecuencia: { type: string }
-        targetDays: { type: array, items: { type: number } }
-        userId: { type: string }
+                     TaskStats:
+                       type: object
+                       required: [total, completed, pending, completedToday]
+                       properties:
+                         total: { type: integer }
+                         completed: { type: integer }
+                         pending: { type: integer }
+                         completedToday: { type: integer }
 
-    HabitLog:
-      type: object
-      required: [id, habitId, fechaCompletado]
-      properties:
-        id: { type: string }
-        habitId: { type: string }
-        fechaCompletado: { type: string }
+                     Habit:
+                       type: object
+                       required: [id, userId, nombre, frecuencia, createdAt, targetDays, archived, currentStreak, bestStreak]
+                       properties:
+                         id: { type: string }
+                         userId: { type: string }
+                         nombre: { type: string }
+                         frecuencia: { type: string }
+                         targetDays: { type: array, items: { type: number } }
+                         archived: { type: boolean }
+                         currentStreak: { type: integer }
+                         bestStreak: { type: integer }
+                         createdAt: { type: string }
 
-    TranscribeInput:
-      type: object
-      required: [userId, audioBase64, mimeType]
-      properties:
-        userId: { type: string }
-        audioBase64: { type: string }
-        mimeType: { type: string }
+                     HabitWithLogs:
+                       type: object
+                       required: [id, userId, nombre, frecuencia, createdAt, logs, targetDays, archived, currentStreak, bestStreak]
+                       properties:
+                         id: { type: string }
+                         userId: { type: string }
+                         nombre: { type: string }
+                         frecuencia: { type: string }
+                         targetDays: { type: array, items: { type: number } }
+                         archived: { type: boolean }
+                         currentStreak: { type: integer }
+                         bestStreak: { type: integer }
+                         createdAt: { type: string }
+                         logs: { type: array, items: { type: string } }
+
+                     HabitInput:
+                       type: object
+                       required: [nombre, userId]
+                       properties:
+                         nombre: { type: string, minLength: 1 }
+                         frecuencia: { type: string }
+                         targetDays: { type: array, items: { type: number } }
+                         userId: { type: string }
+
+                     HabitLog:
+                       type: object
+                       required: [id, habitId, fechaCompletado]
+                       properties:
+                         id: { type: string }
+                         habitId: { type: string }
+                         fechaCompletado: { type: string }
+
+                     TranscribeInput:
+                       type: object
+                       required: [userId, audioBase64, mimeType]
+                       properties:
+                         userId: { type: string }
+                         audioBase64: { type: string }
+                         mimeType: { type: string }

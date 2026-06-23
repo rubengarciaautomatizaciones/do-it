@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './addTaskAttachmentBody';
 export * from './getTasksParams';
 export * from './habit';
 export * from './habitInput';
@@ -14,6 +15,7 @@ export * from './habitWithLogs';
 export * from './healthStatus';
 export * from './magicTextInput';
 export * from './task';
+export * from './taskAttachment';
 export * from './taskInput';
 export * from './taskStats';
 export * from './taskUpdate';

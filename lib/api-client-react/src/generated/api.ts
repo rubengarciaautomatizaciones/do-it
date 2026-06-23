@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AddTaskAttachmentBody,
   GetTasksParams,
   Habit,
   HabitInput,
@@ -28,6 +29,7 @@ import type {
   HealthStatus,
   MagicTextInput,
   Task,
+  TaskAttachment,
   TaskInput,
   TaskStats,
   TaskUpdate,
@@ -459,6 +461,72 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteTaskMutationOptions(options));
+    }
+
+export const getAddTaskAttachmentUrl = (id: string,) => {
+
+
+
+
+  return `/api/tasks/${id}/attachments`
+}
+
+export const addTaskAttachment = async (id: string,
+    addTaskAttachmentBody: AddTaskAttachmentBody, options?: RequestInit): Promise<TaskAttachment> => {
+
+  return customFetch<TaskAttachment>(getAddTaskAttachmentUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      addTaskAttachmentBody,)
+  }
+);}
+
+
+
+
+export const getAddTaskAttachmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTaskAttachment>>, TError,{id: string;data: BodyType<AddTaskAttachmentBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addTaskAttachment>>, TError,{id: string;data: BodyType<AddTaskAttachmentBody>}, TContext> => {
+
+const mutationKey = ['addTaskAttachment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addTaskAttachment>>, {id: string;data: BodyType<AddTaskAttachmentBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addTaskAttachment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddTaskAttachmentMutationResult = NonNullable<Awaited<ReturnType<typeof addTaskAttachment>>>
+    export type AddTaskAttachmentMutationBody = BodyType<AddTaskAttachmentBody>
+    export type AddTaskAttachmentMutationError = ErrorType<unknown>
+
+    export const useAddTaskAttachment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTaskAttachment>>, TError,{id: string;data: BodyType<AddTaskAttachmentBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addTaskAttachment>>,
+        TError,
+        {id: string;data: BodyType<AddTaskAttachmentBody>},
+        TContext
+      > => {
+      return useMutation(getAddTaskAttachmentMutationOptions(options));
     }
 
 export const getGetTaskStatsUrl = () => {

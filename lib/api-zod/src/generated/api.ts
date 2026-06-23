@@ -27,7 +27,15 @@ export const GetTasksResponseItem = zod.object({
   "links": zod.array(zod.string()).optional(),
   "notificaciones": zod.array(zod.string()).optional(),
   "completada": zod.boolean(),
+  "createdAt": zod.string(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string(),
+  "taskId": zod.string(),
+  "fileName": zod.string(),
+  "fileUrl": zod.string(),
+  "fileType": zod.string(),
   "createdAt": zod.string()
+}))
 })
 export const GetTasksResponse = zod.array(GetTasksResponseItem)
 
@@ -82,12 +90,31 @@ export const UpdateTaskResponse = zod.object({
   "links": zod.array(zod.string()).optional(),
   "notificaciones": zod.array(zod.string()).optional(),
   "completada": zod.boolean(),
+  "createdAt": zod.string(),
+  "attachments": zod.array(zod.object({
+  "id": zod.string(),
+  "taskId": zod.string(),
+  "fileName": zod.string(),
+  "fileUrl": zod.string(),
+  "fileType": zod.string(),
   "createdAt": zod.string()
+}))
 })
 
 
 export const DeleteTaskParams = zod.object({
   "id": zod.coerce.string()
+})
+
+
+export const AddTaskAttachmentParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AddTaskAttachmentBody = zod.object({
+  "fileName": zod.string(),
+  "fileUrl": zod.string(),
+  "fileType": zod.string()
 })
 
 

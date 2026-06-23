@@ -5,6 +5,7 @@
  * Do it - Productivity PWA API
  * OpenAPI spec version: 0.1.0
  */
+import type { TaskAttachment } from './taskAttachment';
 
 export interface Task {
   id: string;
@@ -20,4 +21,5 @@ export interface Task {
   notificaciones?: string[];
   completada: boolean;
   createdAt: string;
+  attachments: TaskAttachment[];
 }
