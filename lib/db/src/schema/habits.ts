@@ -1,18 +1,18 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const habitsTable = pgTable("habits", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text("user_id").notNull(),
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: uuid("user_id").notNull(),
   nombre: text("nombre").notNull(),
   frecuencia: text("frecuencia").notNull().default("daily"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const habitLogsTable = pgTable("habit_logs", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  habitId: text("habit_id").notNull().references(() => habitsTable.id, { onDelete: "cascade" }),
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  habitId: uuid("habit_id").notNull().references(() => habitsTable.id, { onDelete: "cascade" }),
   fechaCompletado: text("fecha_completado").notNull(),
 });
 
