@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUpdateTask, useDeleteTask, useAddTaskAttachment, getGetTasksQueryKey, getGetTaskStatsQueryKey, Task } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Loader2, Mic, Clock, X, Download, Bell } from 'lucide-react';
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Loader2, Mic, Clock, X, Download, Bell, Folder } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
@@ -74,10 +74,19 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
 
   const [isAddingLink, setIsAddingLink] = useState(false);
   const [newLink, setNewLink] = useState("");
+  const [localProject, setLocalProject] = useState(task.proyecto || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setLocalProject(task.proyecto || ""); }, [task.proyecto]);
 
   const handleDescriptionChange = (html: string) => {
     updateTask.mutate({ id: task.id, data: { descripcion: html } });
+  };
+
+  const handleProjectBlur = () => {
+    if (localProject !== task.proyecto) {
+      updateTask.mutate({ id: task.id, data: { proyecto: localProject } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    }
   };
 
   const handleDelete = (e?: React.MouseEvent) => {
@@ -130,7 +139,23 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
     <div className="space-y-8 pt-2">
       <RichTextEditor content={task.descripcion || ''} onChange={handleDescriptionChange} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* TARJETA PROYECTO (NUEVO) */}
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Proyecto</p>
+          <div className="flex items-center gap-2">
+            <Folder className="w-4 h-4 text-gray-500" />
+            <input 
+              type="text" 
+              value={localProject} 
+              onChange={(e) => setLocalProject(e.target.value)} 
+              onBlur={handleProjectBlur}
+              placeholder="Ej: General"
+              className="bg-transparent border-0 p-0 text-sm text-gray-900 focus:ring-0 outline-none w-full" 
+            />
+          </div>
+        </div>
+
         {/* TARJETA LÍMITE */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Fecha Límite</p>
@@ -216,6 +241,32 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
   );
 }
 
+// --- COMPONENTE DE TÍTULO EDITABLE ---
+function EditableTitle({ task }: { task: Task }) {
+  const [localTitle, setLocalTitle] = useState(task.titulo);
+  const updateTask = useUpdateTask();
+  const queryClient = useQueryClient();
+
+  useEffect(() => { setLocalTitle(task.titulo); }, [task.titulo]);
+
+  const handleBlur = () => {
+    if (localTitle.trim() && localTitle !== task.titulo) {
+      updateTask.mutate({ id: task.id, data: { titulo: localTitle.trim() } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    } else {
+      setLocalTitle(task.titulo);
+    }
+  };
+
+  return (
+    <input 
+      value={localTitle}
+      onChange={(e) => setLocalTitle(e.target.value)}
+      onBlur={handleBlur}
+      className="text-2xl font-semibold text-gray-900 bg-transparent border-none focus:ring-0 p-0 w-full outline-none"
+    />
+  );
+}
+
 // --- VISTA PC (Fila de Tabla con Drag & Drop) ---
 export function TaskRowDesktop({ task, isHighlighted }: { task: Task, isHighlighted: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -277,9 +328,9 @@ export function TaskRowDesktop({ task, isHighlighted }: { task: Task, isHighligh
       <DialogContent className="bg-white border border-gray-100/50 shadow-2xl w-[calc(100vw-4rem)] max-w-4xl rounded-3xl p-0 gap-0 overflow-hidden">
         <div className="p-6 border-b border-gray-100/50 flex items-center gap-4">
           <Checkbox completada={task.completada} onToggle={toggleComplete} />
-          <DialogTitle className="text-2xl font-semibold text-gray-900 leading-tight flex-1">
-            {task.titulo}
-          </DialogTitle>
+          <div className="flex-1">
+            <EditableTitle task={task} />
+          </div>
         </div>
         <div className="p-6 max-h-[70vh] overflow-y-auto no-scrollbar">
           <TaskDetails task={task} onClose={() => setIsOpen(false)} />
@@ -322,9 +373,9 @@ export function TaskItemMobile({ task, isHighlighted }: { task: Task, isHighligh
       <DialogContent className="bg-white border border-gray-100/50 shadow-2xl w-[90%] max-w-sm rounded-3xl p-0 gap-0 overflow-hidden">
         <div className="p-6 border-b border-gray-100/50 flex items-center gap-3">
           <Checkbox completada={task.completada} onToggle={toggleComplete} />
-          <DialogTitle className="text-xl font-semibold text-gray-900 leading-tight flex-1">
-            {task.titulo}
-          </DialogTitle>
+          <div className="flex-1">
+            <EditableTitle task={task} />
+          </div>
         </div>
         <div className="p-6 max-h-[70vh] overflow-y-auto no-scrollbar">
           <TaskDetails task={task} onClose={() => setIsOpen(false)} />
