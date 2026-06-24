@@ -9,15 +9,15 @@ export const tasksTable = pgTable("tasks", {
   descripcion: text("descripcion"),
   fechaVencimiento: text("fecha_vencimiento"), 
   horaVencimiento: text("hora_vencimiento"), 
-  fechaNotificacion: text("fecha_notificacion"), // NUEVO
-  horaNotificacion: text("hora_notificacion"), // NUEVO
-  proyecto: text("proyecto").default("General"), // NUEVO
-  orden: integer("orden").default(0), // NUEVO: Para Drag & Drop
+  fechaNotificacion: text("fecha_notificacion"), 
+  horaNotificacion: text("hora_notificacion"), 
+  proyecto: text("proyecto"), // ELIMINADO EL DEFAULT "General"
+  orden: integer("orden").default(0), 
   links: jsonb("links").$type<string[]>().default([]), 
   notificaciones: jsonb("notificaciones").$type<string[]>().default([]), 
   completada: boolean("completada").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(), // NUEVO
+  updatedAt: timestamp("updated_at").notNull().defaultNow(), 
 });
 
 export const taskAttachmentsTable = pgTable("task_attachments", {

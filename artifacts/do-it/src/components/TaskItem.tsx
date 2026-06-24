@@ -286,12 +286,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
           </button>
         </div>
       </div>
-
-      <div className="pt-4 border-t border-gray-100 flex justify-end">
-        <button onClick={handleDelete} className="bg-black text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:bg-gray-800 transition-colors">
-          Eliminar tarea
-        </button>
-      </div>
     </div>
   );
 }
@@ -321,6 +315,45 @@ function EditableTitle({ task }: { task: Task }) {
   );
 }
 
+function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => void }) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isConfirming) {
+      // Si a los 2 segundos no confirma, vuelve al estado inicial
+      timer = setTimeout(() => setIsConfirming(false), 2000);
+    }
+    return () => clearTimeout(timer);
+  }, [isConfirming]);
+
+  return (
+    <div className="relative flex items-center justify-end h-8 min-w-[70px]" onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+      <AnimatePresence mode="wait">
+        {!isConfirming ? (
+          <motion.button
+            key="trash"
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsConfirming(true); }}
+            className="text-gray-400 hover:text-black p-2 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </motion.button>
+        ) : (
+          <motion.button
+            key="confirm"
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(e); setIsConfirming(false); }}
+            className="bg-black text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center shadow-sm"
+          >
+            Eliminar
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function TaskRowDesktop({ task }: { task: Task }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -347,13 +380,10 @@ export function TaskRowDesktop({ task }: { task: Task }) {
           id={`task-${task.id}`}
           className={`group border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer`}
         >
-          <td className="p-2 text-center">
-            <Checkbox completada={task.completada} onToggle={toggleComplete} />
-          </td>
-          <td className={`p-3 whitespace-nowrap ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+          <td className={`p-3 text-[15px] max-w-[200px] truncate ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
             {task.titulo}
           </td>
-          <td className="p-3 text-gray-500 text-sm max-w-[200px] truncate">
+          <td className="p-3 text-gray-500 text-sm max-w-[250px] truncate">
             {plainTextDescription}
           </td>
           <td className="p-3 text-gray-500 text-sm whitespace-nowrap">

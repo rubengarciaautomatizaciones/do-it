@@ -23,7 +23,7 @@ const mapTask = (t: any) => ({
   horaVencimiento: t.horaVencimiento ?? null,
   fechaNotificacion: t.fechaNotificacion ?? null,
   horaNotificacion: t.horaNotificacion ?? null,
-  proyecto: t.proyecto ?? "General",
+  proyecto: t.proyecto ?? null, // YA NO FUERZA "General"
   orden: t.orden ?? 0,
   links: (t.links as string[]) ?? [],
   notificaciones: (t.notificaciones as string[]) ?? [],
@@ -102,8 +102,7 @@ router.post("/tasks/:id/attachments", async (req, res) => {
   });
 });
 
-// ... (El resto de rutas /tasks/magic-text, patch, delete y stats se mantienen exactamente igual)
-router.post("/tasks/magic-text", async (req, res) => { /* ... igual ... */ 
+router.post("/tasks/magic-text", async (req, res) => {
   const parsed = CreateMagicTextTaskBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
 
@@ -112,28 +111,37 @@ router.post("/tasks/magic-text", async (req, res) => { /* ... igual ... */
   if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
 
   const ai = new GoogleGenAI({ apiKey });
-  const prompt = `Actúa como un asistente personal ultra-inteligente. Analiza este texto de una nota de voz/texto. 
-  1. Extrae la intención principal para crear un 'titulo' muy corto (máx 5 palabras). 
-  2. Si menciona una fecha (ej: mañana, el viernes, el 23 de mayo), conviértelo a formato YYYY-MM-DD y ponlo en 'fecha_vencimiento' (si no, null). Toma como referencia que hoy es ${new Date().toISOString()}.
-  3. Si menciona una hora (ej: a las 10, a las 4 de la tarde), conviértelo a HH:mm (24h) y ponlo en 'hora_vencimiento' (si no, null).
-  Devuelve SOLO un JSON estricto: {"titulo": "string", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null"}. 
+  // PROMPT ESTRICTO: Obligamos a que el título no pase de 5 palabras para no romper la UI
+  const prompt = `Actúa como un asistente personal. Analiza esta orden del usuario. 
+  1. Extrae la intención para crear un 'titulo' EXTREMADAMENTE CORTO (MÁXIMO 5 PALABRAS).
+  2. Si menciona una fecha (ej: mañana, el viernes), conviértelo a YYYY-MM-DD en 'fecha_vencimiento'. Referencia: hoy es ${new Date().toISOString()}.
+  3. Si menciona una hora, ponla en HH:mm en 'hora_vencimiento'.
+  Devuelve SOLO JSON: {"titulo": "string", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null"}. 
   Texto del usuario: "${text}"`;
 
-  let extractedTask = { titulo: text, fecha_vencimiento: null, hora_vencimiento: null };
+  // FALLBACK PROTEGIDO: Si falla la IA, usamos text.slice() asegurando título corto
+  let extractedTask = { 
+    titulo: text.split(" ").slice(0, 5).join(" ") + (text.split(" ").length > 5 ? "..." : ""), 
+    fecha_vencimiento: null, 
+    hora_vencimiento: null 
+  };
 
   try {
     const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt });
     const aiText = response.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     const cleaned = aiText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    extractedTask = JSON.parse(cleaned);
+    const parsedData = JSON.parse(cleaned);
+    extractedTask.titulo = parsedData.titulo || extractedTask.titulo;
+    extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
+    extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
   } catch (err) {
-    req.log.error({ err }, "Gemini text extraction failed, fallback to raw text");
+    req.log.error({ err }, "Gemini text extraction failed, fallback to raw text applied");
   }
 
   const [task] = await db.insert(tasksTable).values({
     userId,
-    titulo: extractedTask.titulo || "Nueva tarea",
-    descripcion: text, 
+    titulo: extractedTask.titulo,
+    descripcion: text, // AQUI GUARDAMOS EL TEXTO ORIGINAL COMO DESCRIPCION
     fechaVencimiento: extractedTask.fecha_vencimiento ?? null,
     horaVencimiento: extractedTask.hora_vencimiento ?? null,
   }).returning();
@@ -183,6 +191,7 @@ router.get("/tasks/stats", async (req, res) => {
   const [todayRow] = await db.select({ completedToday: sql<number>`count(*)::int` }).from(tasksTable).where(and(eq(tasksTable.userId, userId), eq(tasksTable.completada, true), sql`date(${tasksTable.createdAt}) = ${today}`));
   return res.json({ total: totals.total, completed: totals.completed, pending: totals.total - totals.completed, completedToday: todayRow.completedToday });
 });
+
 // NUEVA RUTA: Eliminar un archivo adjunto
 router.delete("/tasks/:taskId/attachments/:attachmentId", async (req, res) => {
   const { attachmentId } = req.params;

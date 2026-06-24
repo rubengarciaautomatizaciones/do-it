@@ -75,43 +75,42 @@ export default function Tasks() {
           Tareas
         </h1>
 
-        {/* PASTILLAS CON EL MISMO DISEÑO */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Tabs value={filter} onValueChange={setFilter}>
-            <TabsList className="bg-gray-50/50 border border-gray-100 p-1 rounded-full h-auto">
-              <TabsTrigger value="todas" className="rounded-full px-6 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm">Todas</TabsTrigger>
-              <TabsTrigger value="sin_hacer" className="rounded-full px-6 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm">Sin Hacer</TabsTrigger>
-              <TabsTrigger value="hechas" className="rounded-full px-6 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm">Hechas</TabsTrigger>
-            </TabsList>
-          </Tabs>
+      // Reemplaza la zona de {/* PASTILLAS CON EL MISMO DISEÑO */} de Tasks.tsx con esto:
 
-          <div className="bg-gray-50/50 border border-gray-100 p-1 rounded-full flex items-center">
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
-                <SelectValue placeholder="Ordenar por..." />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="orden">Orden manual</SelectItem>
-                <SelectItem value="fecha_limite">Fecha límite</SelectItem>
-                <SelectItem value="recientes">Más recientes</SelectItem>
-                <SelectItem value="antiguas">Más antiguas</SelectItem>
-                <SelectItem value="modificacion">Última modificación</SelectItem>
-                <SelectItem value="proyecto">Proyecto (A-Z)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="bg-gray-50 border border-gray-100 p-1.5 rounded-full flex flex-wrap items-center gap-2 w-fit">
+        <Select value={filter} onValueChange={setFilter}>
+          <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
+            <SelectValue placeholder="Estado..." />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl">
+            <SelectItem value="todas">Todas</SelectItem>
+            <SelectItem value="sin_hacer">Sin Hacer</SelectItem>
+            <SelectItem value="hechas">Hechas</SelectItem>
+          </SelectContent>
+        </Select>
 
-          <div className="bg-gray-50/50 border border-gray-100 p-1 rounded-full flex items-center">
-            <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
-                <SelectValue placeholder="Proyecto..." />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                {projects.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
+            <SelectValue placeholder="Ordenar por..." />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl">
+            <SelectItem value="orden">Orden manual</SelectItem>
+            <SelectItem value="fecha_limite">Fecha límite</SelectItem>
+            <SelectItem value="recientes">Más recientes</SelectItem>
+            <SelectItem value="antiguas">Más antiguas</SelectItem>
+            <SelectItem value="modificacion">Última modificación</SelectItem>
+            <SelectItem value="proyecto">Proyecto (A-Z)</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={projectFilter} onValueChange={setProjectFilter}>
+          <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
+            <SelectValue placeholder="Proyecto..." />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl">
+            {projects.map(p => <SelectItem key={p} value={p}>{p || "Sin proyecto"}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar relative px-6 w-full max-w-7xl mx-auto pb-40">
