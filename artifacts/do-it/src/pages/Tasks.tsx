@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGetTasks, getGetTasksQueryKey } from '@workspace/api-client-react';
 import { TaskItemMobile, TaskRowDesktop } from '../components/TaskItem';
 import { MagicInput } from '../components/MagicInput';
@@ -16,9 +16,15 @@ export default function Tasks() {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
-  const [filter, setFilter] = useState("todas"); 
-  const [sortBy, setSortBy] = useState("orden");
-  const [projectFilter, setProjectFilter] = useState("Todos");
+  // Inicializamos leyendo de localStorage (o valor por defecto)
+  const [filter, setFilter] = useState(() => localStorage.getItem("doit_filter") || "todas"); 
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem("doit_sortBy") || "orden");
+  const [projectFilter, setProjectFilter] = useState(() => localStorage.getItem("doit_projectFilter") || "Todos");
+
+  // Guardamos en localStorage cada vez que cambian
+  useEffect(() => { localStorage.setItem("doit_filter", filter); }, [filter]);
+  useEffect(() => { localStorage.setItem("doit_sortBy", sortBy); }, [sortBy]);
+  useEffect(() => { localStorage.setItem("doit_projectFilter", projectFilter); }, [projectFilter]);
 
   const projects = React.useMemo(() => {
     if (!tasks) return ["Todos"];
