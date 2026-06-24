@@ -28,8 +28,9 @@ const mapTask = (t: any) => ({
   links: (t.links as string[]) ?? [],
   notificaciones: (t.notificaciones as string[]) ?? [],
   completada: t.completada,
-  createdAt: t.createdAt.toISOString(),
-  updatedAt: t.updatedAt.toISOString(),
+  // BLINDAJE DE FECHAS: Si es string lo convierte a Date, si falla usa la fecha actual
+  createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
+  updatedAt: t.updatedAt ? new Date(t.updatedAt).toISOString() : new Date().toISOString(),
 });
 
 router.get("/tasks", async (req, res) => {

@@ -1,29 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { useGetTasks, useCreateTask, getGetTasksQueryKey, Task } from '@workspace/api-client-react';
+import React, { useState } from 'react';
+import { useGetTasks, getGetTasksQueryKey, Task } from '@workspace/api-client-react';
 import { TaskItemMobile, TaskRowDesktop } from '../components/TaskItem';
 import { MagicInput } from '../components/MagicInput';
 import { BottomTabBar } from '../components/BottomTabBar';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '../hooks/use-mobile';
-import { useAuth } from '../contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 export default function Tasks() {
   const { data: tasks, isLoading } = useGetTasks();
   const isMobile = useIsMobile();
-  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const createTask = useCreateTask();
 
   const [filter, setFilter] = useState("todas"); 
   const [sortBy, setSortBy] = useState("orden");
   const [projectFilter, setProjectFilter] = useState("Todos");
-  const [newTaskTitle, setNewTaskTitle] = useState("");
   const [highlightedTask, setHighlightedTask] = useState<string | null>(null);
 
   // Extraer proyectos únicos
@@ -62,26 +57,6 @@ export default function Tasks() {
     return result;
   }, [tasks, filter, sortBy, projectFilter]);
 
-  const handleCreate = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (newTaskTitle.trim() && user) {
-      createTask.mutate({ data: { titulo: newTaskTitle.trim(), userId: user.id } }, {
-        onSuccess: (newTask) => {
-          setNewTaskTitle("");
-          queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
-
-          // Auto-scroll y Highlight
-          setFilter("sin_hacer");
-          setHighlightedTask(newTask.id);
-          setTimeout(() => {
-            document.getElementById(`task-${newTask.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 100);
-          setTimeout(() => setHighlightedTask(null), 1500);
-        }
-      });
-    }
-  };
-
   // Drag and Drop Setup
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -97,9 +72,6 @@ export default function Tasks() {
 
       // Actualización optimista
       queryClient.setQueryData(getGetTasksQueryKey(), newOrder);
-
-      // Aquí deberíamos llamar a un endpoint PATCH /tasks/reorder para guardar en BD
-      // Por ahora, la UI se actualiza instantáneamente.
     }
   };
 
@@ -111,20 +83,29 @@ export default function Tasks() {
           Tareas
         </h1>
 
-        <div className="flex flex-wrap items-center gap-4">
-          <Tabs value={filter} onValueChange={setFilter}>
-            <TabsList className="bg-gray-50/50 border border-gray-100 p-1 rounded-full h-auto">
-              <TabsTrigger value="todas" className="rounded-full px-6 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm">Todas</TabsTrigger>
-              <TabsTrigger value="sin_hacer" className="rounded-full px-6 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm">Sin Hacer</TabsTrigger>
-              <TabsTrigger value="hechas" className="rounded-full px-6 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm">Hechas</TabsTrigger>
-            </TabsList>
-          </Tabs>
+        {/* PASTILLA ÚNICA CON LOS 3 DESPLEGABLES */}
+        <div className="inline-flex flex-wrap items-center bg-gray-50/50 border border-gray-100 p-1 rounded-full gap-1">
 
+          {/* Desplegable de Estado */}
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="todas">Todas</SelectItem>
+              <SelectItem value="sin_hacer">Sin Hacer</SelectItem>
+              <SelectItem value="hechas">Hechas</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="w-px h-4 bg-gray-200 mx-1"></div>
+
+          {/* Desplegable de Orden */}
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[180px] rounded-full bg-gray-50/50 border-gray-100">
+            <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
               <SelectValue placeholder="Ordenar por..." />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl">
               <SelectItem value="orden">Orden manual</SelectItem>
               <SelectItem value="fecha_limite">Fecha límite</SelectItem>
               <SelectItem value="recientes">Más recientes</SelectItem>
@@ -134,14 +115,18 @@ export default function Tasks() {
             </SelectContent>
           </Select>
 
+          <div className="w-px h-4 bg-gray-200 mx-1"></div>
+
+          {/* Desplegable de Proyecto */}
           <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-[180px] rounded-full bg-gray-50/50 border-gray-100">
+            <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
               <SelectValue placeholder="Proyecto..." />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl">
               {projects.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
+
         </div>
       </div>
 
@@ -185,26 +170,6 @@ export default function Tasks() {
           </div>
         )}
       </div>
-
-      {/* INPUT MANUAL PC (Fijo abajo) */}
-      {!isMobile && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-6">
-          <form onSubmit={handleCreate} className="relative flex items-center shadow-lg rounded-full bg-white border border-gray-100">
-            <input
-              type="text"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder="Escribe una tarea..."
-              className="w-full bg-transparent rounded-full py-4 pl-6 pr-14 text-base outline-none placeholder:text-gray-400"
-            />
-            {newTaskTitle && (
-              <button type="submit" className="absolute right-2 p-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors">
-                <Send className="w-5 h-5" />
-              </button>
-            )}
-          </form>
-        </div>
-      )}
 
       <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white via-white/90 to-transparent z-30" />
 
