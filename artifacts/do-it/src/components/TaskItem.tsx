@@ -18,7 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Document, Page, pdfjs } from 'react-pdf';
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-// --- PREVISUALIZACIÓN DE ENLACES (1:1) ---
+// --- PREVISUALIZACIÓN DE ENLACES (Imagen 1:1 estricta) ---
 function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   const { data, isLoading } = useGetTaskMetadata({ url });
   const hostname = new URL(url).hostname.replace('www.', '');
@@ -26,15 +26,15 @@ function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   return (
     <a href={url} target="_blank" rel="noreferrer" className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/link transition-all hover:shadow-md cursor-pointer block">
       {isLoading ? (
-        <div className="w-full aspect-square bg-gray-200 animate-pulse flex items-center justify-center">
+        <div className="w-full aspect-square bg-gray-200 animate-pulse flex items-center justify-center shrink-0">
           <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
         </div>
       ) : data?.image ? (
-        <div className="w-full aspect-square bg-gray-200 relative">
-          <img src={data.image} alt="preview" className="w-full h-full object-cover" />
+        <div className="w-full aspect-square bg-gray-200 relative overflow-hidden shrink-0">
+          <img src={data.image} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
         </div>
       ) : (
-        <div className="w-full aspect-square bg-gray-100 flex items-center justify-center"><LinkIcon className="w-8 h-8 text-gray-300" /></div>
+        <div className="w-full aspect-square bg-gray-100 flex items-center justify-center shrink-0"><LinkIcon className="w-8 h-8 text-gray-300" /></div>
       )}
       <div className="p-3 bg-white flex-1">
         <p className="text-sm font-medium text-gray-900 line-clamp-1">{data?.title || url}</p>
@@ -48,7 +48,7 @@ function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   );
 }
 
-// --- PREVISUALIZACIÓN DE ARCHIVOS (1:1) ---
+// --- PREVISUALIZACIÓN DE ARCHIVOS (Imagen 1:1 estricta) ---
 function AttachmentPreview({ att, onRemove }: { att: any, onRemove: () => void }) {
   const isImage = att.fileType.includes('image');
   const isPdf = att.fileType === 'application/pdf';
@@ -56,11 +56,11 @@ function AttachmentPreview({ att, onRemove }: { att: any, onRemove: () => void }
 
   return (
     <a href={att.fileUrl} target="_blank" rel="noreferrer" className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/file transition-all hover:shadow-md cursor-pointer block">
-      <div className="w-full aspect-square bg-gray-100 relative flex items-center justify-center overflow-hidden">
-        {isImage && <img src={att.fileUrl} alt={att.fileName} className="w-full h-full object-cover" />}
+      <div className="w-full aspect-square bg-gray-100 relative flex items-center justify-center overflow-hidden shrink-0">
+        {isImage && <img src={att.fileUrl} alt={att.fileName} className="absolute inset-0 w-full h-full object-cover" />}
 
         {isPdf && (
-          <div className="w-full h-full flex items-center justify-center overflow-hidden bg-white">
+          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-white">
             <Document 
               file={att.fileUrl} 
               loading={<Loader2 className="w-6 h-6 animate-spin text-gray-300" />}
