@@ -73,7 +73,6 @@ export default function Tasks() {
           Tareas
         </h1>
 
-        {/* FILTROS ESTRICTAMENTE HORIZONTALES */}
         <div className="bg-gray-50 border border-gray-100 p-1.5 rounded-full flex flex-row flex-nowrap items-center gap-2 w-fit max-w-full overflow-x-auto no-scrollbar">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0 whitespace-nowrap">
@@ -111,33 +110,32 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* CONTENEDOR DE LA TABLA CON SCROLL INDEPENDIENTE PARA STICKY HEADER */}
-      <div className="flex-1 relative w-full max-w-[1600px] mx-auto px-2 md:px-6 pb-32 flex flex-col min-h-0">
+      <div className="flex-1 relative w-full max-w-[1600px] mx-auto px-2 md:px-6 flex flex-col min-h-0">
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
         ) : isMobile ? (
-          <div className="overflow-y-auto no-scrollbar h-full pb-20">
+          <div className="overflow-y-auto no-scrollbar h-full pb-56">
             <motion.div layout className="flex flex-col gap-1">
               <AnimatePresence>
                 {filteredAndSortedTasks.map((task) => (
-                  <TaskItemMobile key={task.id} task={task} />
+                  <TaskItemMobile key={task.id} task={task} currentFilter={filter} />
                 ))}
               </AnimatePresence>
             </motion.div>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto no-scrollbar border border-gray-100 rounded-xl shadow-sm bg-white relative">
-            <table className="w-full text-sm text-left table-fixed">
+          <div className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar border-t border-x border-gray-100 rounded-t-xl bg-white relative pb-56">
+            <table className="w-full text-sm text-left table-fixed min-w-[900px]">
               <thead className="bg-gray-50/95 backdrop-blur-sm text-gray-500 border-b border-gray-100 sticky top-0 z-20">
                 <tr>
                   <th className="w-14 p-3 text-center font-medium"></th>
-                  <th className="w-1/4 p-3 font-medium">Título</th>
-                  <th className="w-1/4 p-3 font-medium">Descripción</th>
-                  <th className="w-40 p-3 font-medium">Límite</th>
-                  <th className="w-40 p-3 font-medium">Notificación</th>
-                  <th className="w-32 p-3 font-medium">Proyecto</th>
+                  <th className="w-2/12 p-3 font-medium">Título</th>
+                  <th className="w-3/12 p-3 font-medium">Descripción</th>
+                  <th className="w-32 p-3 font-medium">Límite</th>
+                  <th className="w-32 p-3 font-medium">Notificación</th>
+                  <th className="w-28 p-3 font-medium">Proyecto</th>
                   <th className="w-24 p-3 font-medium">Adjuntos</th>
-                  <th className="w-14 p-3 font-medium"></th>
+                  <th className="w-16 p-3 font-medium"></th>
                 </tr>
               </thead>
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -145,7 +143,7 @@ export default function Tasks() {
                   <tbody className="bg-white">
                     <AnimatePresence>
                       {filteredAndSortedTasks.map(task => (
-                        <TaskRowDesktop key={task.id} task={task} />
+                        <TaskRowDesktop key={task.id} task={task} currentFilter={filter} />
                       ))}
                     </AnimatePresence>
                   </tbody>
@@ -156,7 +154,7 @@ export default function Tasks() {
         )}
       </div>
 
-      <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white via-white/90 to-transparent z-30" />
+      <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white via-white/80 to-transparent z-30" />
 
       <MagicInput />
       <BottomTabBar />

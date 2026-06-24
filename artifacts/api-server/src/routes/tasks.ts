@@ -23,12 +23,11 @@ const mapTask = (t: any) => ({
   horaVencimiento: t.horaVencimiento ?? null,
   fechaNotificacion: t.fechaNotificacion ?? null,
   horaNotificacion: t.horaNotificacion ?? null,
-  proyecto: t.proyecto ?? null, // YA NO FUERZA "General"
+  proyecto: t.proyecto ?? null, 
   orden: t.orden ?? 0,
   links: (t.links as string[]) ?? [],
   notificaciones: (t.notificaciones as string[]) ?? [],
   completada: t.completada,
-  // BLINDAJE DE FECHAS: Si es string lo convierte a Date, si falla usa la fecha actual
   createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
   updatedAt: t.updatedAt ? new Date(t.updatedAt).toISOString() : new Date().toISOString(),
 });
@@ -48,7 +47,6 @@ router.get("/tasks", async (req, res) => {
 
   const tasks = await db.select().from(tasksTable).where(and(...conditions)).orderBy(tasksTable.orden, tasksTable.createdAt);
 
-  // OBTENER ADJUNTOS PARA ESTAS TAREAS
   const taskIds = tasks.map(t => t.id);
   let attachments: any[] = [];
   if (taskIds.length > 0) {
@@ -76,6 +74,7 @@ router.post("/tasks", async (req, res) => {
     descripcion: descripcion ?? null, 
     fechaVencimiento: fechaVencimiento ?? null,
     horaVencimiento: horaVencimiento ?? null,
+    proyecto: null, // FORZAMOS NULL PARA QUE NO HAYA PROYECTO
     links: links ?? [],
     notificaciones: notificaciones ?? []
   }).returning();
@@ -83,7 +82,6 @@ router.post("/tasks", async (req, res) => {
   return res.status(201).json({ ...mapTask(task), attachments: [] });
 });
 
-// NUEVA RUTA: Guardar adjuntos en la BD
 router.post("/tasks/:id/attachments", async (req, res) => {
   const { id } = req.params;
   const parsed = AddTaskAttachmentBody.safeParse(req.body);
@@ -111,7 +109,6 @@ router.post("/tasks/magic-text", async (req, res) => {
   if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
 
   const ai = new GoogleGenAI({ apiKey });
-  // PROMPT ESTRICTO: Obligamos a que el título no pase de 5 palabras para no romper la UI
   const prompt = `Actúa como un asistente personal. Analiza esta orden del usuario. 
   1. Extrae la intención para crear un 'titulo' EXTREMADAMENTE CORTO (MÁXIMO 5 PALABRAS).
   2. Si menciona una fecha (ej: mañana, el viernes), conviértelo a YYYY-MM-DD en 'fecha_vencimiento'. Referencia: hoy es ${new Date().toISOString()}.
@@ -119,7 +116,6 @@ router.post("/tasks/magic-text", async (req, res) => {
   Devuelve SOLO JSON: {"titulo": "string", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null"}. 
   Texto del usuario: "${text}"`;
 
-  // FALLBACK PROTEGIDO: Si falla la IA, usamos text.slice() asegurando título corto
   let extractedTask = { 
     titulo: text.split(" ").slice(0, 5).join(" ") + (text.split(" ").length > 5 ? "..." : ""), 
     fecha_vencimiento: null, 
@@ -141,9 +137,10 @@ router.post("/tasks/magic-text", async (req, res) => {
   const [task] = await db.insert(tasksTable).values({
     userId,
     titulo: extractedTask.titulo,
-    descripcion: text, // AQUI GUARDAMOS EL TEXTO ORIGINAL COMO DESCRIPCION
+    descripcion: text, 
     fechaVencimiento: extractedTask.fecha_vencimiento ?? null,
     horaVencimiento: extractedTask.hora_vencimiento ?? null,
+    proyecto: null, // FORZAMOS NULL PARA QUE NO HAYA PROYECTO
   }).returning();
 
   return res.status(201).json({ ...mapTask(task), attachments: [] });
@@ -169,7 +166,7 @@ router.patch("/tasks/:id", async (req, res) => {
     ...(updates.links !== undefined && { links: updates.links }),
     ...(updates.notificaciones !== undefined && { notificaciones: updates.notificaciones }),
     ...(updates.completada !== undefined && { completada: updates.completada }),
-    updatedAt: new Date(), // Actualizamos la fecha de modificación
+    updatedAt: new Date(), 
   }).where(eq(tasksTable.id, id)).returning();
 
   if (!task) return res.status(404).json({ error: "Task not found" });
@@ -192,14 +189,12 @@ router.get("/tasks/stats", async (req, res) => {
   return res.json({ total: totals.total, completed: totals.completed, pending: totals.total - totals.completed, completedToday: todayRow.completedToday });
 });
 
-// NUEVA RUTA: Eliminar un archivo adjunto
 router.delete("/tasks/:taskId/attachments/:attachmentId", async (req, res) => {
   const { attachmentId } = req.params;
   await db.delete(taskAttachmentsTable).where(eq(taskAttachmentsTable.id, attachmentId));
   return res.status(204).send();
 });
 
-// NUEVA RUTA: Extraer metadatos de un enlace (Estilo WhatsApp)
 router.get("/tasks/metadata", async (req, res) => {
   const url = req.query.url as string;
   if (!url) return res.status(400).json({ error: "URL required" });

@@ -4,7 +4,7 @@ import { useUpdateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata,
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Mic, Clock, X, Download, Bell, Folder } from 'lucide-react';
+import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Mic, Clock, X, Bell, Folder } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '../lib/supabase';
@@ -20,7 +20,7 @@ function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   const hostname = new URL(url).hostname.replace('www.', '');
 
   return (
-    <div className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/link transition-all hover:shadow-md">
+    <a href={url} target="_blank" rel="noreferrer" className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/link transition-all hover:shadow-md cursor-pointer block">
       {isLoading ? (
         <div className="w-full h-32 bg-gray-200 animate-pulse" />
       ) : data?.image ? (
@@ -35,11 +35,10 @@ function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
         {data?.description && <p className="text-xs text-gray-500 line-clamp-2 mt-1">{data.description}</p>}
         <p className="text-[10px] text-gray-400 mt-2 uppercase font-semibold tracking-wider">{hostname}</p>
       </div>
-      <a href={url} target="_blank" rel="noreferrer" className="absolute inset-0 z-0"></a>
-      <button onClick={(e) => { e.preventDefault(); onRemove(); }} className="absolute top-2 right-2 z-10 p-1.5 text-gray-500 hover:text-black hover:bg-white/90 rounded-full bg-white/50 backdrop-blur-md transition-colors shadow-sm">
+      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }} className="absolute top-2 right-2 z-10 p-1.5 text-gray-500 hover:text-black hover:bg-white/90 rounded-full bg-white/50 backdrop-blur-md transition-colors shadow-sm">
         <X className="w-4 h-4" />
       </button>
-    </div>
+    </a>
   );
 }
 
@@ -237,32 +236,8 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
         </div>
       </div>
 
-      <div className="space-y-3">
-        {(task.links && task.links.length > 0) || (task.attachments && task.attachments.length > 0) ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {task.links?.map((link, i) => (
-              <LinkPreview key={i} url={link} onRemove={() => removeLink(link)} />
-            ))}
-            {task.attachments?.map((att) => (
-              <div key={att.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group/file relative overflow-hidden">
-                <div className="w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm flex-shrink-0">
-                  {att.fileType.includes('audio') ? <Mic className="w-5 h-5 text-black" /> :
-                   att.fileType.includes('image') ? <ImageIcon className="w-5 h-5 text-black" /> : 
-                   <File className="w-5 h-5 text-black" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{att.fileName}</p>
-                  <p className="text-xs text-gray-500 uppercase">{att.fileType.split('/')[1] || 'Archivo'}</p>
-                </div>
-                <div className="flex items-center gap-1 relative z-10">
-                  <a href={att.fileUrl} download target="_blank" rel="noreferrer" className="p-2 text-gray-400 hover:text-black rounded-lg transition-colors bg-gray-50/80 backdrop-blur-sm"><Download className="w-4 h-4" /></a>
-                  <button onClick={() => removeAttachment(att.id)} className="p-2 text-gray-400 hover:text-black rounded-lg transition-colors bg-gray-50/80 backdrop-blur-sm"><X className="w-4 h-4" /></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
+      <div className="space-y-4">
+        {/* BOTONES ARRIBA */}
         <div className="flex flex-wrap gap-2">
           {isAddingLink ? (
             <form onSubmit={handleAddLink} className="flex flex-1 gap-2">
@@ -281,6 +256,35 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
             <Paperclip className="w-4 h-4" /> Archivo
           </button>
         </div>
+
+        {/* LISTA DE ENLACES Y ARCHIVOS ABAJO */}
+        {(task.links && task.links.length > 0) || (task.attachments && task.attachments.length > 0) ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {task.links?.map((link, i) => (
+              <LinkPreview key={i} url={link} onRemove={() => removeLink(link)} />
+            ))}
+            {task.attachments?.map((att) => (
+              <a key={att.id} href={att.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group/file relative overflow-hidden hover:shadow-md transition-all cursor-pointer">
+                {att.fileType.includes('image') ? (
+                  <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
+                    <img src={att.fileUrl} alt={att.fileName} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm flex-shrink-0">
+                    {att.fileType.includes('audio') ? <Mic className="w-5 h-5 text-black" /> : <File className="w-5 h-5 text-black" />}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{att.fileName}</p>
+                  <p className="text-xs text-gray-500 uppercase">{att.fileType.split('/')[1] || 'Archivo'}</p>
+                </div>
+                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeAttachment(att.id); }} className="absolute top-2 right-2 z-10 p-1.5 text-gray-500 hover:text-black hover:bg-white/90 rounded-full bg-white/50 backdrop-blur-md transition-colors shadow-sm">
+                  <X className="w-4 h-4" />
+                </button>
+              </a>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -311,8 +315,9 @@ function EditableTitle({ task }: { task: Task }) {
   );
 }
 
-export function TaskRowDesktop({ task }: { task: Task }) {
+export function TaskRowDesktop({ task, currentFilter }: { task: Task, currentFilter: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [localCompletada, setLocalCompletada] = useState(task.completada);
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
@@ -320,11 +325,22 @@ export function TaskRowDesktop({ task }: { task: Task }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
+  useEffect(() => { setLocalCompletada(task.completada); }, [task.completada]);
+
   const toggleComplete = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    const newStatus = !task.completada;
-    queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => old?.map(t => t.id === task.id ? { ...t, completada: newStatus } : t));
-    updateTask.mutate({ id: task.id, data: { completada: newStatus } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    const newStatus = !localCompletada;
+
+    if (currentFilter === "sin_hacer" && newStatus === true) {
+      setLocalCompletada(true);
+      setTimeout(() => {
+        queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => old?.map(t => t.id === task.id ? { ...t, completada: newStatus } : t));
+        updateTask.mutate({ id: task.id, data: { completada: newStatus } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+      }, 400);
+    } else {
+      queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => old?.map(t => t.id === task.id ? { ...t, completada: newStatus } : t));
+      updateTask.mutate({ id: task.id, data: { completada: newStatus } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    }
   };
 
   const plainTextDescription = task.descripcion ? task.descripcion.replace(/<[^>]*>?/gm, '') : '';
@@ -332,18 +348,22 @@ export function TaskRowDesktop({ task }: { task: Task }) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <tr 
+        <motion.tr 
           ref={setNodeRef} style={style} {...attributes} {...listeners}
+          layout
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, x: 100, transition: { duration: 0.3 } }}
           id={`task-${task.id}`}
           className={`group border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer`}
         >
           <td className="p-2 text-center">
-            <Checkbox completada={task.completada} onToggle={toggleComplete} />
+            <Checkbox completada={localCompletada} onToggle={toggleComplete} />
           </td>
-          <td className={`p-3 text-[15px] max-w-[200px] truncate ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+          <td className={`p-3 text-[15px] truncate ${localCompletada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
             {task.titulo}
           </td>
-          <td className="p-3 text-gray-500 text-sm max-w-[250px] truncate">
+          <td className="p-3 text-gray-500 text-sm truncate">
             {plainTextDescription}
           </td>
           <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
@@ -369,11 +389,11 @@ export function TaskRowDesktop({ task }: { task: Task }) {
               deleteTask.mutate({ id: task.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
             }} />
           </td>
-        </tr>
+        </motion.tr>
       </DialogTrigger>
       <DialogContent className="bg-white border border-gray-100/50 shadow-2xl w-[calc(100vw-4rem)] max-w-4xl rounded-3xl p-0 gap-0 overflow-hidden">
         <div className="p-6 border-b border-gray-100/50 flex items-center gap-4">
-          <Checkbox completada={task.completada} onToggle={toggleComplete} />
+          <Checkbox completada={localCompletada} onToggle={toggleComplete} />
           <div className="flex-1">
             <EditableTitle task={task} />
           </div>
@@ -386,25 +406,44 @@ export function TaskRowDesktop({ task }: { task: Task }) {
   );
 }
 
-export function TaskItemMobile({ task }: { task: Task }) {
+export function TaskItemMobile({ task, currentFilter }: { task: Task, currentFilter: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [localCompletada, setLocalCompletada] = useState(task.completada);
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
 
+  useEffect(() => { setLocalCompletada(task.completada); }, [task.completada]);
+
   const toggleComplete = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    const newStatus = !task.completada;
-    queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => old?.map(t => t.id === task.id ? { ...t, completada: newStatus } : t));
-    updateTask.mutate({ id: task.id, data: { completada: newStatus } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    const newStatus = !localCompletada;
+
+    if (currentFilter === "sin_hacer" && newStatus === true) {
+      setLocalCompletada(true);
+      setTimeout(() => {
+        queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => old?.map(t => t.id === task.id ? { ...t, completada: newStatus } : t));
+        updateTask.mutate({ id: task.id, data: { completada: newStatus } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+      }, 400);
+    } else {
+      queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => old?.map(t => t.id === task.id ? { ...t, completada: newStatus } : t));
+      updateTask.mutate({ id: task.id, data: { completada: newStatus } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <div id={`task-${task.id}`} className={`flex items-center gap-3 py-3 px-2 rounded-xl cursor-pointer transition-colors hover:bg-gray-50/50`}>
-          <Checkbox completada={task.completada} onToggle={toggleComplete} />
+        <motion.div 
+          layout
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, x: 100, transition: { duration: 0.3 } }}
+          id={`task-${task.id}`} 
+          className={`flex items-center gap-3 py-3 px-2 rounded-xl cursor-pointer transition-colors hover:bg-gray-50/50`}
+        >
+          <Checkbox completada={localCompletada} onToggle={toggleComplete} />
           <div className="flex-1 min-w-0">
-            <p className={`text-[15px] leading-tight truncate ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+            <p className={`text-[15px] leading-tight truncate ${localCompletada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
               {task.titulo}
             </p>
           </div>
@@ -413,11 +452,11 @@ export function TaskItemMobile({ task }: { task: Task }) {
               <Calendar className="w-3 h-3"/> {format(new Date(task.fechaVencimiento), "d MMM", { locale: es })}
             </span>
           )}
-        </div>
+        </motion.div>
       </DialogTrigger>
       <DialogContent className="bg-white border border-gray-100/50 shadow-2xl w-[90%] max-w-sm rounded-3xl p-0 gap-0 overflow-hidden">
         <div className="p-6 border-b border-gray-100/50 flex items-center gap-3">
-          <Checkbox completada={task.completada} onToggle={toggleComplete} />
+          <Checkbox completada={localCompletada} onToggle={toggleComplete} />
           <div className="flex-1">
             <EditableTitle task={task} />
           </div>
