@@ -210,12 +210,22 @@ router.delete("/tasks/:taskId/attachments/:attachmentId", async (req, res) => {
   return res.status(204).send();
 });
 
+// RUTA ACTUALIZADA: Extraer metadatos engañando a los detectores de bots
 router.get("/tasks/metadata", async (req, res) => {
   const url = req.query.url as string;
   if (!url) return res.status(400).json({ error: "URL required" });
 
   try {
-    const options = { url, timeout: 5000 };
+    const options = { 
+      url, 
+      timeout: 5000,
+      // Inyectamos un User-Agent de Chrome real para que Instagram/TikTok nos den la imagen real
+      fetchOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      }
+    };
     const { result } = await ogs(options);
 
     return res.json({ 
