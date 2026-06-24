@@ -163,9 +163,9 @@ export default function Tasks() {
       {/* Fondo blanco sólido detrás del input y el menú inferior */}
       <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-[152px] bg-white z-30" />
 
-      {/* Degradado suave que empieza justo encima del input */}
-      <div className="pointer-events-none fixed bottom-[152px] left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent z-30" />
-
+      {/* Degradado mucho más suave y alto */}
+      <div className="pointer-events-none fixed bottom-[152px] left-0 right-0 h-40 bg-gradient-to-t from-white via-white/50 to-transparent z-30" />
+      
       <MagicInput />
       <BottomTabBar />
     </div>
