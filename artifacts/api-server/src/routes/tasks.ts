@@ -111,15 +111,26 @@ router.post("/tasks/magic-text", async (req, res) => {
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // PROMPT MEJORADO: Extrae la acción principal sin cortar artificialmente
-  const prompt = `Actúa como un asistente personal. Analiza esta orden del usuario. 
-  1. Extrae la acción principal para crear un 'titulo' claro y directo (ej: "Recoger al niño del fútbol"). No lo cortes artificialmente.
-  2. Si menciona una fecha (ej: mañana, el viernes), conviértelo a YYYY-MM-DD en 'fecha_vencimiento'. Referencia: hoy es ${new Date().toISOString()}.
-  3. Si menciona una hora, ponla en HH:mm en 'hora_vencimiento'.
-  Devuelve SOLO JSON: {"titulo": "string", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null"}. 
+  // Calculamos la hora exacta en Madrid para dársela a la IA
+  const formatter = new Intl.DateTimeFormat('es-ES', { 
+    timeZone: 'Europe/Madrid', 
+    year: 'numeric', month: '2-digit', day: '2-digit', 
+    hour: '2-digit', minute: '2-digit' 
+  });
+  const madridTime = formatter.format(new Date());
+
+  // PROMPT BLINDADO
+  const prompt = `Actúa como un asistente personal ultra-inteligente. Analiza esta orden del usuario.
+  La fecha y hora actual en España/Madrid es: ${madridTime}.
+
+  REGLAS ESTRICTAS:
+  1. 'titulo': Extrae SOLO la acción principal (ej: "Recoger al niño del fútbol"). ELIMINA del título cualquier mención a fechas o horas (quita palabras como "mañana", "a las 12", etc).
+  2. 'fecha_vencimiento': Si menciona un día, calcúlalo basándote en la fecha actual y devuélvelo en formato "YYYY-MM-DD". Si no, null.
+  3. 'hora_vencimiento': Si menciona una hora, devuélvela en formato 24h "HH:mm". Si no, null.
+
+  Devuelve SOLO un JSON válido: {"titulo": "string", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null"}.
   Texto del usuario: "${text}"`;
 
-  // FALLBACK PROTEGIDO: Si falla la IA, usamos el texto completo
   let extractedTask = { 
     titulo: text, 
     fecha_vencimiento: null, 
@@ -199,7 +210,6 @@ router.delete("/tasks/:taskId/attachments/:attachmentId", async (req, res) => {
   return res.status(204).send();
 });
 
-// RUTA ACTUALIZADA: Extraer metadatos usando open-graph-scraper
 router.get("/tasks/metadata", async (req, res) => {
   const url = req.query.url as string;
   if (!url) return res.status(400).json({ error: "URL required" });
@@ -215,7 +225,6 @@ router.get("/tasks/metadata", async (req, res) => {
       url 
     });
   } catch (e) {
-    // Fallback silencioso si la URL bloquea el scraping
     return res.json({ title: url, description: null, image: null, url });
   }
 });

@@ -16,10 +16,9 @@ import { CSS } from '@dnd-kit/utilities';
 
 // --- CONFIGURACIÓN DE REACT-PDF ---
 import { Document, Page, pdfjs } from 'react-pdf';
-// Usamos el CDN para el worker, evita problemas de empaquetado con Vite
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-// --- PREVISUALIZACIÓN DE ENLACES (Estilo WhatsApp / Twitter Card) ---
+// --- PREVISUALIZACIÓN DE ENLACES (1:1) ---
 function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   const { data, isLoading } = useGetTaskMetadata({ url });
   const hostname = new URL(url).hostname.replace('www.', '');
@@ -27,17 +26,17 @@ function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   return (
     <a href={url} target="_blank" rel="noreferrer" className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/link transition-all hover:shadow-md cursor-pointer block">
       {isLoading ? (
-        <div className="w-full h-32 bg-gray-200 animate-pulse flex items-center justify-center">
+        <div className="w-full aspect-square bg-gray-200 animate-pulse flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
         </div>
       ) : data?.image ? (
-        <div className="w-full h-32 bg-gray-200 relative">
+        <div className="w-full aspect-square bg-gray-200 relative">
           <img src={data.image} alt="preview" className="w-full h-full object-cover" />
         </div>
       ) : (
-        <div className="w-full h-32 bg-gray-100 flex items-center justify-center"><LinkIcon className="w-8 h-8 text-gray-300" /></div>
+        <div className="w-full aspect-square bg-gray-100 flex items-center justify-center"><LinkIcon className="w-8 h-8 text-gray-300" /></div>
       )}
-      <div className="p-3 bg-white">
+      <div className="p-3 bg-white flex-1">
         <p className="text-sm font-medium text-gray-900 line-clamp-1">{data?.title || url}</p>
         {data?.description && <p className="text-xs text-gray-500 line-clamp-2 mt-1">{data.description}</p>}
         <p className="text-[10px] text-gray-400 mt-2 uppercase font-semibold tracking-wider">{hostname}</p>
@@ -49,7 +48,7 @@ function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   );
 }
 
-// --- PREVISUALIZACIÓN DE ARCHIVOS (Imágenes, PDFs, Audios) ---
+// --- PREVISUALIZACIÓN DE ARCHIVOS (1:1) ---
 function AttachmentPreview({ att, onRemove }: { att: any, onRemove: () => void }) {
   const isImage = att.fileType.includes('image');
   const isPdf = att.fileType === 'application/pdf';
@@ -57,7 +56,7 @@ function AttachmentPreview({ att, onRemove }: { att: any, onRemove: () => void }
 
   return (
     <a href={att.fileUrl} target="_blank" rel="noreferrer" className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/file transition-all hover:shadow-md cursor-pointer block">
-      <div className="w-full h-32 bg-gray-100 relative flex items-center justify-center overflow-hidden">
+      <div className="w-full aspect-square bg-gray-100 relative flex items-center justify-center overflow-hidden">
         {isImage && <img src={att.fileUrl} alt={att.fileName} className="w-full h-full object-cover" />}
 
         {isPdf && (
@@ -76,7 +75,7 @@ function AttachmentPreview({ att, onRemove }: { att: any, onRemove: () => void }
         {!isImage && !isPdf && !isAudio && <File className="w-8 h-8 text-gray-300" />}
       </div>
 
-      <div className="p-3 bg-white">
+      <div className="p-3 bg-white flex-1">
         <p className="text-sm font-medium text-gray-900 line-clamp-1">{att.fileName}</p>
         <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold tracking-wider">{att.fileType.split('/')[1] || 'Archivo'}</p>
       </div>
@@ -303,9 +302,9 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
           </button>
         </div>
 
-        {/* LISTA DE ENLACES Y ARCHIVOS ABAJO (ESTILO WHATSAPP) */}
+        {/* LISTA DE ENLACES Y ARCHIVOS ABAJO (1:1) */}
         {(task.links && task.links.length > 0) || (task.attachments && task.attachments.length > 0) ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {task.links?.map((link, i) => (
               <LinkPreview key={i} url={link} onRemove={() => removeLink(link)} />
             ))}
