@@ -169,3 +169,11 @@ export type GetTaskMetadataParams = {
 url: string;
 };
 
+export type LogHabitParams = {
+date?: string;
+};
+
+export type UnlogHabitParams = {
+date?: string;
+};
+

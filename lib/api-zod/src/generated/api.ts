@@ -196,9 +196,17 @@ export const LogHabitParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const LogHabitQueryParams = zod.object({
+  "date": zod.coerce.string().optional()
+})
+
 
 export const UnlogHabitParams = zod.object({
   "id": zod.coerce.string()
+})
+
+export const UnlogHabitQueryParams = zod.object({
+  "date": zod.coerce.string().optional()
 })
 
 

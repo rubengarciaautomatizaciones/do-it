@@ -1,3 +1,4 @@
+// artifacts/api-server/src/routes/habits.ts
 import { Router } from "express";
 import { eq, and, gte } from "drizzle-orm";
 import { db, habitsTable, habitLogsTable } from "@workspace/db";
@@ -63,19 +64,25 @@ router.delete("/habits/:id", async (req, res) => {
 router.post("/habits/:id/log", async (req, res) => {
   const parsed = LogHabitParams.safeParse(req.params);
   if (!parsed.success) return res.status(400).json({ error: "Invalid id" });
-  const today = new Date().toISOString().split("T")[0];
-  const existing = await db.select().from(habitLogsTable).where(and(eq(habitLogsTable.habitId, parsed.data.id), eq(habitLogsTable.fechaCompletado, today)));
+
+  // Usar la fecha enviada o la de hoy por defecto
+  const targetDate = (req.query.date as string) || new Date().toISOString().split("T")[0];
+
+  const existing = await db.select().from(habitLogsTable).where(and(eq(habitLogsTable.habitId, parsed.data.id), eq(habitLogsTable.fechaCompletado, targetDate)));
   if (existing.length > 0) return res.status(201).json(existing[0]);
 
-  const [log] = await db.insert(habitLogsTable).values({ habitId: parsed.data.id, fechaCompletado: today }).returning();
+  const [log] = await db.insert(habitLogsTable).values({ habitId: parsed.data.id, fechaCompletado: targetDate }).returning();
   return res.status(201).json(log);
 });
 
 router.delete("/habits/:id/log", async (req, res) => {
   const parsed = UnlogHabitParams.safeParse(req.params);
   if (!parsed.success) return res.status(400).json({ error: "Invalid id" });
-  const today = new Date().toISOString().split("T")[0];
-  await db.delete(habitLogsTable).where(and(eq(habitLogsTable.habitId, parsed.data.id), eq(habitLogsTable.fechaCompletado, today)));
+
+  // Usar la fecha enviada o la de hoy por defecto
+  const targetDate = (req.query.date as string) || new Date().toISOString().split("T")[0];
+
+  await db.delete(habitLogsTable).where(and(eq(habitLogsTable.habitId, parsed.data.id), eq(habitLogsTable.fechaCompletado, targetDate)));
   return res.status(204).send();
 });
 

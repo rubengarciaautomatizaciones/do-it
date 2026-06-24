@@ -28,6 +28,7 @@ import type {
   HabitLog,
   HabitWithLogs,
   HealthStatus,
+  LogHabitParams,
   MagicTextInput,
   Task,
   TaskAttachment,
@@ -35,6 +36,7 @@ import type {
   TaskStats,
   TaskUpdate,
   TranscribeInput,
+  UnlogHabitParams,
   UrlMetadata
 } from './api.schemas';
 
@@ -946,17 +948,26 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getDeleteHabitMutationOptions(options));
     }
 
-export const getLogHabitUrl = (id: string,) => {
+export const getLogHabitUrl = (id: string,
+    params?: LogHabitParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/habits/${id}/log`
+  return stringifiedParams.length > 0 ? `/api/habits/${id}/log?${stringifiedParams}` : `/api/habits/${id}/log`
 }
 
-export const logHabit = async (id: string, options?: RequestInit): Promise<HabitLog> => {
+export const logHabit = async (id: string,
+    params?: LogHabitParams, options?: RequestInit): Promise<HabitLog> => {
 
-  return customFetch<HabitLog>(getLogHabitUrl(id),
+  return customFetch<HabitLog>(getLogHabitUrl(id,params),
   {
     ...options,
     method: 'POST'
@@ -969,8 +980,8 @@ export const logHabit = async (id: string, options?: RequestInit): Promise<Habit
 
 
 export const getLogHabitMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logHabit>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof logHabit>>, TError,{id: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logHabit>>, TError,{id: string;params?: LogHabitParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof logHabit>>, TError,{id: string;params?: LogHabitParams}, TContext> => {
 
 const mutationKey = ['logHabit'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -982,10 +993,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logHabit>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logHabit>>, {id: string;params?: LogHabitParams}> = (props) => {
+          const {id,params} = props ?? {};
 
-          return  logHabit(id,requestOptions)
+          return  logHabit(id,params,requestOptions)
         }
 
 
@@ -1000,27 +1011,36 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type LogHabitMutationError = ErrorType<unknown>
 
     export const useLogHabit = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logHabit>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logHabit>>, TError,{id: string;params?: LogHabitParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof logHabit>>,
         TError,
-        {id: string},
+        {id: string;params?: LogHabitParams},
         TContext
       > => {
       return useMutation(getLogHabitMutationOptions(options));
     }
 
-export const getUnlogHabitUrl = (id: string,) => {
+export const getUnlogHabitUrl = (id: string,
+    params?: UnlogHabitParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/habits/${id}/log`
+  return stringifiedParams.length > 0 ? `/api/habits/${id}/log?${stringifiedParams}` : `/api/habits/${id}/log`
 }
 
-export const unlogHabit = async (id: string, options?: RequestInit): Promise<void> => {
+export const unlogHabit = async (id: string,
+    params?: UnlogHabitParams, options?: RequestInit): Promise<void> => {
 
-  return customFetch<void>(getUnlogHabitUrl(id),
+  return customFetch<void>(getUnlogHabitUrl(id,params),
   {
     ...options,
     method: 'DELETE'
@@ -1033,8 +1053,8 @@ export const unlogHabit = async (id: string, options?: RequestInit): Promise<voi
 
 
 export const getUnlogHabitMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlogHabit>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof unlogHabit>>, TError,{id: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlogHabit>>, TError,{id: string;params?: UnlogHabitParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlogHabit>>, TError,{id: string;params?: UnlogHabitParams}, TContext> => {
 
 const mutationKey = ['unlogHabit'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1046,10 +1066,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlogHabit>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlogHabit>>, {id: string;params?: UnlogHabitParams}> = (props) => {
+          const {id,params} = props ?? {};
 
-          return  unlogHabit(id,requestOptions)
+          return  unlogHabit(id,params,requestOptions)
         }
 
 
@@ -1064,11 +1084,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UnlogHabitMutationError = ErrorType<unknown>
 
     export const useUnlogHabit = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlogHabit>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlogHabit>>, TError,{id: string;params?: UnlogHabitParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof unlogHabit>>,
         TError,
-        {id: string},
+        {id: string;params?: UnlogHabitParams},
         TContext
       > => {
       return useMutation(getUnlogHabitMutationOptions(options));
