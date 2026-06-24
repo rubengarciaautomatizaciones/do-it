@@ -7,6 +7,7 @@
  */
 
 export * from './addTaskAttachmentBody';
+export * from './getTaskMetadataParams';
 export * from './getTasksParams';
 export * from './habit';
 export * from './habitInput';
@@ -20,3 +21,4 @@ export * from './taskInput';
 export * from './taskStats';
 export * from './taskUpdate';
 export * from './transcribeInput';
+export * from './urlMetadata';

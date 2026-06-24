@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUpdateTask, useDeleteTask, useAddTaskAttachment, getGetTasksQueryKey, getGetTaskStatsQueryKey, Task } from '@workspace/api-client-react';
+import { useUpdateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata, getGetTasksQueryKey, getGetTaskStatsQueryKey, Task } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Loader2, Mic, Clock, X, Download, Bell, Folder } from 'lucide-react';
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
@@ -13,10 +14,35 @@ import { RichTextEditor } from './RichTextEditor';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// --- PREVISUALIZACIÓN DE ENLACES (Estilo WhatsApp) ---
+function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
+  const { data, isLoading } = useGetTaskMetadata({ url });
+
+  return (
+    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group/link relative overflow-hidden">
+      {isLoading ? (
+        <div className="w-12 h-12 bg-gray-200 rounded animate-pulse flex-shrink-0" />
+      ) : data?.image ? (
+        <img src={data.image} alt="preview" className="w-12 h-12 rounded object-cover flex-shrink-0" />
+      ) : (
+        <div className="w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm flex-shrink-0"><LinkIcon className="w-5 h-5 text-gray-400" /></div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">{data?.title || url}</p>
+        <p className="text-xs text-gray-500 truncate">{new URL(url).hostname}</p>
+      </div>
+      <a href={url} target="_blank" rel="noreferrer" className="absolute inset-0 z-0"></a>
+      <button onClick={(e) => { e.preventDefault(); onRemove(); }} className="relative z-10 p-2 text-gray-400 hover:text-black rounded-lg transition-colors bg-gray-50/80 backdrop-blur-sm">
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
 function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => void }) {
   const [isConfirming, setIsConfirming] = useState(false);
   return (
-    <div className="relative flex items-center justify-end h-8" onClick={e => e.stopPropagation()}>
+    <div className="relative flex items-center justify-end h-8" onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
       <AnimatePresence mode="wait">
         {!isConfirming ? (
           <motion.button
@@ -44,23 +70,25 @@ function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => 
 
 export function Checkbox({ completada, onToggle }: { completada: boolean, onToggle: (e: React.MouseEvent) => void }) {
   return (
-    <button onClick={onToggle} className="flex-shrink-0 focus:outline-none flex items-center justify-center w-8 h-8">
-      <motion.div
-        animate={completada ? "checked" : "unchecked"}
-        variants={{
-          checked: { scale: [1, 0.8, 1.1, 1], backgroundColor: "#111111", borderColor: "#111111" },
-          unchecked: { scale: 1, backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }
-        }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
-      >
-        {completada && (
-          <motion.svg initial={{ opacity: 0, pathLength: 0 }} animate={{ opacity: 1, pathLength: 1 }} className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </motion.svg>
-        )}
-      </motion.div>
-    </button>
+    <div onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()} className="flex items-center justify-center w-8 h-8">
+      <button onClick={onToggle} className="flex-shrink-0 focus:outline-none">
+        <motion.div
+          animate={completada ? "checked" : "unchecked"}
+          variants={{
+            checked: { scale: [1, 0.8, 1.1, 1], backgroundColor: "#111111", borderColor: "#111111" },
+            unchecked: { scale: 1, backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }
+          }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
+        >
+          {completada && (
+            <motion.svg initial={{ opacity: 0, pathLength: 0 }} animate={{ opacity: 1, pathLength: 1 }} className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </motion.svg>
+          )}
+        </motion.div>
+      </button>
+    </div>
   );
 }
 
@@ -74,19 +102,28 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
 
   const [isAddingLink, setIsAddingLink] = useState(false);
   const [newLink, setNewLink] = useState("");
-  const [localProject, setLocalProject] = useState(task.proyecto || "");
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { setLocalProject(task.proyecto || ""); }, [task.proyecto]);
 
   const handleDescriptionChange = (html: string) => {
     updateTask.mutate({ id: task.id, data: { descripcion: html } });
   };
 
-  const handleProjectBlur = () => {
-    if (localProject !== task.proyecto) {
-      updateTask.mutate({ id: task.id, data: { proyecto: localProject } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+  const handleProjectSelect = (val: string) => {
+    if (val === "__new__") {
+      setIsCreatingProject(true);
+    } else {
+      updateTask.mutate({ id: task.id, data: { proyecto: val === "none" ? null : val } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
     }
+  };
+
+  const saveNewProject = () => {
+    if (newProjectName.trim()) {
+      updateTask.mutate({ id: task.id, data: { proyecto: newProjectName.trim() } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    }
+    setIsCreatingProject(false);
+    setNewProjectName("");
   };
 
   const handleDelete = (e?: React.MouseEvent) => {
@@ -103,7 +140,8 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
   const handleAddLink = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLink.trim()) return;
-    const updatedLinks = [...(task.links || []), newLink.trim()];
+    const formattedLink = newLink.trim().startsWith('http') ? newLink.trim() : `https://${newLink.trim()}`;
+    const updatedLinks = [...(task.links || []), formattedLink];
     updateTask.mutate({ id: task.id, data: { links: updatedLinks } }, {
       onSuccess: () => { setIsAddingLink(false); setNewLink(""); queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }); }
     });
@@ -135,24 +173,43 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
     });
   };
 
+  // Obtener lista de proyectos existentes
+  const tasksData = queryClient.getQueryData<Task[]>(getGetTasksQueryKey());
+  const projects = Array.from(new Set(tasksData?.map(t => t.proyecto).filter(Boolean) || []));
+
   return (
     <div className="space-y-8 pt-2">
       <RichTextEditor content={task.descripcion || ''} onChange={handleDescriptionChange} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* TARJETA PROYECTO (NUEVO) */}
+        {/* TARJETA PROYECTO */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Proyecto</p>
           <div className="flex items-center gap-2">
             <Folder className="w-4 h-4 text-gray-500" />
-            <input 
-              type="text" 
-              value={localProject} 
-              onChange={(e) => setLocalProject(e.target.value)} 
-              onBlur={handleProjectBlur}
-              placeholder="Ej: General"
-              className="bg-transparent border-0 p-0 text-sm text-gray-900 focus:ring-0 outline-none w-full" 
-            />
+            {isCreatingProject ? (
+              <input 
+                autoFocus
+                type="text" 
+                value={newProjectName} 
+                onChange={(e) => setNewProjectName(e.target.value)} 
+                onBlur={saveNewProject}
+                onKeyDown={(e) => e.key === 'Enter' && saveNewProject()}
+                placeholder="Nombre del proyecto..."
+                className="bg-transparent border-0 p-0 text-sm text-gray-900 focus:ring-0 outline-none w-full" 
+              />
+            ) : (
+              <Select value={task.proyecto || "none"} onValueChange={handleProjectSelect}>
+                <SelectTrigger className="w-full bg-transparent border-0 p-0 h-auto shadow-none focus:ring-0 text-sm text-gray-900">
+                  <SelectValue placeholder="Elegir" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__new__" className="font-medium text-blue-600">+ Crear nuevo proyecto</SelectItem>
+                  <SelectItem value="none" className="text-gray-400">Ninguno</SelectItem>
+                  {projects.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
 
@@ -183,30 +240,28 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
         </div>
       </div>
 
+      {/* ENLACES Y ARCHIVOS (2 COLUMNAS) */}
       <div className="space-y-3">
         {(task.links && task.links.length > 0) || (task.attachments && task.attachments.length > 0) ? (
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {task.links?.map((link, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl group/link">
-                <a href={link.startsWith('http') ? link : `https://${link}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="bg-white p-2 rounded-lg shadow-sm"><LinkIcon className="w-4 h-4 text-black" /></div>
-                  <span className="text-sm text-gray-900 truncate">{link}</span>
-                </a>
-                <button onClick={() => removeLink(link)} className="p-2 text-gray-400 hover:text-black rounded-lg transition-colors"><X className="w-4 h-4" /></button>
-              </div>
+              <LinkPreview key={i} url={link} onRemove={() => removeLink(link)} />
             ))}
             {task.attachments?.map((att) => (
-              <div key={att.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl group/file">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="bg-white p-2 rounded-lg shadow-sm">
-                    {att.fileType.includes('audio') ? <Mic className="w-4 h-4 text-black" /> :
-                     att.fileType.includes('image') ? <ImageIcon className="w-4 h-4 text-black" /> : 
-                     <File className="w-4 h-4 text-black" />}
-                  </div>
-                  <span className="text-sm text-gray-900 truncate">{att.fileName}</span>
+              <div key={att.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group/file relative overflow-hidden">
+                <div className="w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm flex-shrink-0">
+                  {att.fileType.includes('audio') ? <Mic className="w-5 h-5 text-black" /> :
+                   att.fileType.includes('image') ? <ImageIcon className="w-5 h-5 text-black" /> : 
+                   <File className="w-5 h-5 text-black" />}
                 </div>
-                <a href={att.fileUrl} download target="_blank" rel="noreferrer" className="p-2 text-gray-400 hover:text-black rounded-lg transition-colors"><Download className="w-4 h-4" /></a>
-                <button onClick={() => removeAttachment(att.id)} className="p-2 text-gray-400 hover:text-black rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{att.fileName}</p>
+                  <p className="text-xs text-gray-500 uppercase">{att.fileType.split('/')[1] || 'Archivo'}</p>
+                </div>
+                <div className="flex items-center gap-1 relative z-10">
+                  <a href={att.fileUrl} download target="_blank" rel="noreferrer" className="p-2 text-gray-400 hover:text-black rounded-lg transition-colors bg-gray-50/80 backdrop-blur-sm"><Download className="w-4 h-4" /></a>
+                  <button onClick={() => removeAttachment(att.id)} className="p-2 text-gray-400 hover:text-black rounded-lg transition-colors bg-gray-50/80 backdrop-blur-sm"><X className="w-4 h-4" /></button>
+                </div>
               </div>
             ))}
           </div>
@@ -241,7 +296,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
   );
 }
 
-// --- COMPONENTE DE TÍTULO EDITABLE ---
 function EditableTitle({ task }: { task: Task }) {
   const [localTitle, setLocalTitle] = useState(task.titulo);
   const updateTask = useUpdateTask();
@@ -267,8 +321,7 @@ function EditableTitle({ task }: { task: Task }) {
   );
 }
 
-// --- VISTA PC (Fila de Tabla con Drag & Drop) ---
-export function TaskRowDesktop({ task, isHighlighted }: { task: Task, isHighlighted: boolean }) {
+export function TaskRowDesktop({ task }: { task: Task }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
@@ -292,9 +345,9 @@ export function TaskRowDesktop({ task, isHighlighted }: { task: Task, isHighligh
         <tr 
           ref={setNodeRef} style={style} {...attributes} {...listeners}
           id={`task-${task.id}`}
-          className={`group border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-grab active:cursor-grabbing ${isHighlighted ? 'bg-gray-100' : ''}`}
+          className={`group border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer`}
         >
-          <td className="p-2 text-center" onClick={e => e.stopPropagation()}>
+          <td className="p-2 text-center">
             <Checkbox completada={task.completada} onToggle={toggleComplete} />
           </td>
           <td className={`p-3 whitespace-nowrap ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
@@ -305,6 +358,9 @@ export function TaskRowDesktop({ task, isHighlighted }: { task: Task, isHighligh
           </td>
           <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
             {task.fechaVencimiento ? format(new Date(task.fechaVencimiento), "d MMM yyyy", { locale: es }) : ''}
+          </td>
+          <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
+            {task.fechaNotificacion ? format(new Date(task.fechaNotificacion), "d MMM yyyy", { locale: es }) : ''}
           </td>
           <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
             {task.proyecto}
@@ -340,8 +396,7 @@ export function TaskRowDesktop({ task, isHighlighted }: { task: Task, isHighligh
   );
 }
 
-// --- VISTA MÓVIL ---
-export function TaskItemMobile({ task, isHighlighted }: { task: Task, isHighlighted: boolean }) {
+export function TaskItemMobile({ task }: { task: Task }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
@@ -356,7 +411,7 @@ export function TaskItemMobile({ task, isHighlighted }: { task: Task, isHighligh
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <div id={`task-${task.id}`} className={`flex items-center gap-3 py-3 px-2 rounded-xl cursor-pointer transition-colors ${isHighlighted ? 'bg-gray-100' : 'hover:bg-gray-50/50'}`}>
+        <div id={`task-${task.id}`} className={`flex items-center gap-3 py-3 px-2 rounded-xl cursor-pointer transition-colors hover:bg-gray-50/50`}>
           <Checkbox completada={task.completada} onToggle={toggleComplete} />
           <div className="flex-1 min-w-0">
             <p className={`text-[15px] leading-tight truncate ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>

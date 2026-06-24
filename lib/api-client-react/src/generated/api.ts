@@ -21,6 +21,7 @@ import type {
 
 import type {
   AddTaskAttachmentBody,
+  GetTaskMetadataParams,
   GetTasksParams,
   Habit,
   HabitInput,
@@ -33,7 +34,8 @@ import type {
   TaskInput,
   TaskStats,
   TaskUpdate,
-  TranscribeInput
+  TranscribeInput,
+  UrlMetadata
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -332,6 +334,84 @@ export const useCreateMagicTextTask = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateMagicTextTaskMutationOptions(options));
     }
+
+export const getGetTaskMetadataUrl = (params: GetTaskMetadataParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tasks/metadata?${stringifiedParams}` : `/api/tasks/metadata`
+}
+
+export const getTaskMetadata = async (params: GetTaskMetadataParams, options?: RequestInit): Promise<UrlMetadata> => {
+
+  return customFetch<UrlMetadata>(getGetTaskMetadataUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskMetadataQueryKey = (params?: GetTaskMetadataParams,) => {
+    return [
+    `/api/tasks/metadata`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTaskMetadataQueryOptions = <TData = Awaited<ReturnType<typeof getTaskMetadata>>, TError = ErrorType<unknown>>(params: GetTaskMetadataParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskMetadata>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskMetadataQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskMetadata>>> = ({ signal }) => getTaskMetadata(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskMetadata>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskMetadataQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskMetadata>>>
+export type GetTaskMetadataQueryError = ErrorType<unknown>
+
+
+
+export function useGetTaskMetadata<TData = Awaited<ReturnType<typeof getTaskMetadata>>, TError = ErrorType<unknown>>(
+ params: GetTaskMetadataParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskMetadata>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskMetadataQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getUpdateTaskUrl = (id: string,) => {
 

@@ -3,6 +3,7 @@ import { useGetTasks, getGetTasksQueryKey, Task } from '@workspace/api-client-re
 import { TaskItemMobile, TaskRowDesktop } from '../components/TaskItem';
 import { MagicInput } from '../components/MagicInput';
 import { BottomTabBar } from '../components/BottomTabBar';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '../hooks/use-mobile';
@@ -19,9 +20,7 @@ export default function Tasks() {
   const [filter, setFilter] = useState("todas"); 
   const [sortBy, setSortBy] = useState("orden");
   const [projectFilter, setProjectFilter] = useState("Todos");
-  const [highlightedTask, setHighlightedTask] = useState<string | null>(null);
 
-  // Extraer proyectos únicos
   const projects = React.useMemo(() => {
     if (!tasks) return ["Todos"];
     const unique = new Set(tasks.map(t => t.proyecto).filter(Boolean));
@@ -32,14 +31,10 @@ export default function Tasks() {
     if (!tasks) return [];
     let result = [...tasks];
 
-    // Filtro Estado
     if (filter === "sin_hacer") result = result.filter(t => !t.completada);
     if (filter === "hechas") result = result.filter(t => t.completada);
-
-    // Filtro Proyecto
     if (projectFilter !== "Todos") result = result.filter(t => t.proyecto === projectFilter);
 
-    // Orden
     result.sort((a, b) => {
       if (sortBy === "fecha_limite") {
         if (!a.fechaVencimiento) return 1;
@@ -50,16 +45,15 @@ export default function Tasks() {
       if (sortBy === "antiguas") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       if (sortBy === "modificacion") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       if (sortBy === "proyecto") return (a.proyecto || "").localeCompare(b.proyecto || "");
-      // Por defecto: orden manual
       return (a.orden || 0) - (b.orden || 0);
     });
 
     return result;
   }, [tasks, filter, sortBy, projectFilter]);
 
-  // Drag and Drop Setup
+  // DND: Añadimos un retraso de 5px para que no secuestre los clicks normales
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -69,8 +63,6 @@ export default function Tasks() {
       const oldIndex = filteredAndSortedTasks.findIndex(t => t.id === active.id);
       const newIndex = filteredAndSortedTasks.findIndex(t => t.id === over.id);
       const newOrder = arrayMove(filteredAndSortedTasks, oldIndex, newIndex);
-
-      // Actualización optimista
       queryClient.setQueryData(getGetTasksQueryKey(), newOrder);
     }
   };
@@ -83,50 +75,42 @@ export default function Tasks() {
           Tareas
         </h1>
 
-        {/* PASTILLA ÚNICA CON LOS 3 DESPLEGABLES */}
-        <div className="inline-flex flex-wrap items-center bg-gray-50/50 border border-gray-100 p-1 rounded-full gap-1">
+        {/* PASTILLAS CON EL MISMO DISEÑO */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Tabs value={filter} onValueChange={setFilter}>
+            <TabsList className="bg-gray-50/50 border border-gray-100 p-1 rounded-full h-auto">
+              <TabsTrigger value="todas" className="rounded-full px-6 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm">Todas</TabsTrigger>
+              <TabsTrigger value="sin_hacer" className="rounded-full px-6 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm">Sin Hacer</TabsTrigger>
+              <TabsTrigger value="hechas" className="rounded-full px-6 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm">Hechas</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-          {/* Desplegable de Estado */}
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="todas">Todas</SelectItem>
-              <SelectItem value="sin_hacer">Sin Hacer</SelectItem>
-              <SelectItem value="hechas">Hechas</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="bg-gray-50/50 border border-gray-100 p-1 rounded-full flex items-center">
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
+                <SelectValue placeholder="Ordenar por..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="orden">Orden manual</SelectItem>
+                <SelectItem value="fecha_limite">Fecha límite</SelectItem>
+                <SelectItem value="recientes">Más recientes</SelectItem>
+                <SelectItem value="antiguas">Más antiguas</SelectItem>
+                <SelectItem value="modificacion">Última modificación</SelectItem>
+                <SelectItem value="proyecto">Proyecto (A-Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <div className="w-px h-4 bg-gray-200 mx-1"></div>
-
-          {/* Desplegable de Orden */}
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
-              <SelectValue placeholder="Ordenar por..." />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="orden">Orden manual</SelectItem>
-              <SelectItem value="fecha_limite">Fecha límite</SelectItem>
-              <SelectItem value="recientes">Más recientes</SelectItem>
-              <SelectItem value="antiguas">Más antiguas</SelectItem>
-              <SelectItem value="modificacion">Última modificación</SelectItem>
-              <SelectItem value="proyecto">Proyecto (A-Z)</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="w-px h-4 bg-gray-200 mx-1"></div>
-
-          {/* Desplegable de Proyecto */}
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
-              <SelectValue placeholder="Proyecto..." />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              {projects.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
+          <div className="bg-gray-50/50 border border-gray-100 p-1 rounded-full flex items-center">
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger className="w-auto border-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-gray-600 hover:text-black hover:bg-white rounded-full px-4 py-2 transition-all">
+                <SelectValue placeholder="Proyecto..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                {projects.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -137,7 +121,7 @@ export default function Tasks() {
           <motion.div layout className="flex flex-col gap-1">
             <AnimatePresence>
               {filteredAndSortedTasks.map((task) => (
-                <TaskItemMobile key={task.id} task={task} isHighlighted={highlightedTask === task.id} />
+                <TaskItemMobile key={task.id} task={task} />
               ))}
             </AnimatePresence>
           </motion.div>
@@ -149,7 +133,8 @@ export default function Tasks() {
                   <th className="w-14 p-3 text-center font-medium"></th>
                   <th className="w-1/4 p-3 font-medium">Título</th>
                   <th className="w-1/4 p-3 font-medium">Descripción</th>
-                  <th className="w-32 p-3 font-medium">Fecha</th>
+                  <th className="w-32 p-3 font-medium">Límite</th>
+                  <th className="w-32 p-3 font-medium">Notificación</th>
                   <th className="w-32 p-3 font-medium">Proyecto</th>
                   <th className="w-24 p-3 font-medium">Adjuntos</th>
                   <th className="w-14 p-3 font-medium"></th>
@@ -160,7 +145,7 @@ export default function Tasks() {
                   <tbody className="bg-white">
                     <AnimatePresence>
                       {filteredAndSortedTasks.map(task => (
-                        <TaskRowDesktop key={task.id} task={task} isHighlighted={highlightedTask === task.id} />
+                        <TaskRowDesktop key={task.id} task={task} />
                       ))}
                     </AnimatePresence>
                   </tbody>

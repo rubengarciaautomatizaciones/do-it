@@ -190,4 +190,24 @@ router.delete("/tasks/:taskId/attachments/:attachmentId", async (req, res) => {
   return res.status(204).send();
 });
 
+// NUEVA RUTA: Extraer metadatos de un enlace (Estilo WhatsApp)
+router.get("/tasks/metadata", async (req, res) => {
+  const url = req.query.url as string;
+  if (!url) return res.status(400).json({ error: "URL required" });
+  try {
+    const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const html = await response.text();
+
+    const getTag = (regex: RegExp) => { const match = html.match(regex); return match ? match[1] : null; };
+
+    const title = getTag(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i) || getTag(/<title[^>]*>([^<]+)<\/title>/i);
+    const description = getTag(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i) || getTag(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i);
+    const image = getTag(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+
+    return res.json({ title, description, image, url });
+  } catch (e) {
+    return res.json({ title: url, description: null, image: null, url });
+  }
+});
+
 export default router;

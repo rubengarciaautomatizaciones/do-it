@@ -140,4 +140,9 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+  /* Ocultar el placeholder de TipTap inmediatamente al hacer focus */
+  .ProseMirror:focus p.is-editor-empty::before {
+    content: none !important;
+    display: none !important;
+  }
 }

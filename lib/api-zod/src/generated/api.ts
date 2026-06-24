@@ -75,6 +75,18 @@ export const CreateMagicTextTaskBody = zod.object({
 })
 
 
+export const GetTaskMetadataQueryParams = zod.object({
+  "url": zod.coerce.string()
+})
+
+export const GetTaskMetadataResponse = zod.object({
+  "title": zod.string().nullish(),
+  "description": zod.string().nullish(),
+  "image": zod.string().nullish(),
+  "url": zod.string()
+})
+
+
 export const UpdateTaskParams = zod.object({
   "id": zod.coerce.string()
 })

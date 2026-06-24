@@ -9,6 +9,16 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface UrlMetadata {
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  image?: string | null;
+  url: string;
+}
+
 export interface TaskAttachment {
   id: string;
   taskId: string;
@@ -153,5 +163,9 @@ export interface TranscribeInput {
 
 export type GetTasksParams = {
 completed?: boolean;
+};
+
+export type GetTaskMetadataParams = {
+url: string;
 };
 
