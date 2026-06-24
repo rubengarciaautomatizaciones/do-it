@@ -3,7 +3,6 @@ import { useGetTasks, getGetTasksQueryKey, Task } from '@workspace/api-client-re
 import { TaskItemMobile, TaskRowDesktop } from '../components/TaskItem';
 import { MagicInput } from '../components/MagicInput';
 import { BottomTabBar } from '../components/BottomTabBar';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '../hooks/use-mobile';
@@ -51,7 +50,6 @@ export default function Tasks() {
     return result;
   }, [tasks, filter, sortBy, projectFilter]);
 
-  // DND: Añadimos un retraso de 5px para que no secuestre los clicks normales
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -75,42 +73,41 @@ export default function Tasks() {
           Tareas
         </h1>
 
-      // Reemplaza la zona de {/* PASTILLAS CON EL MISMO DISEÑO */} de Tasks.tsx con esto:
+        <div className="bg-gray-50 border border-gray-100 p-1.5 rounded-full flex flex-wrap items-center gap-2 w-fit">
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
+              <SelectValue placeholder="Estado..." />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="todas">Todas</SelectItem>
+              <SelectItem value="sin_hacer">Sin Hacer</SelectItem>
+              <SelectItem value="hechas">Hechas</SelectItem>
+            </SelectContent>
+          </Select>
 
-      <div className="bg-gray-50 border border-gray-100 p-1.5 rounded-full flex flex-wrap items-center gap-2 w-fit">
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
-            <SelectValue placeholder="Estado..." />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl">
-            <SelectItem value="todas">Todas</SelectItem>
-            <SelectItem value="sin_hacer">Sin Hacer</SelectItem>
-            <SelectItem value="hechas">Hechas</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
+              <SelectValue placeholder="Ordenar por..." />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="orden">Orden manual</SelectItem>
+              <SelectItem value="fecha_limite">Fecha límite</SelectItem>
+              <SelectItem value="recientes">Más recientes</SelectItem>
+              <SelectItem value="antiguas">Más antiguas</SelectItem>
+              <SelectItem value="modificacion">Última modificación</SelectItem>
+              <SelectItem value="proyecto">Proyecto (A-Z)</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
-            <SelectValue placeholder="Ordenar por..." />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl">
-            <SelectItem value="orden">Orden manual</SelectItem>
-            <SelectItem value="fecha_limite">Fecha límite</SelectItem>
-            <SelectItem value="recientes">Más recientes</SelectItem>
-            <SelectItem value="antiguas">Más antiguas</SelectItem>
-            <SelectItem value="modificacion">Última modificación</SelectItem>
-            <SelectItem value="proyecto">Proyecto (A-Z)</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={projectFilter} onValueChange={setProjectFilter}>
-          <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
-            <SelectValue placeholder="Proyecto..." />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl">
-            {projects.map(p => <SelectItem key={p} value={p}>{p || "Sin proyecto"}</SelectItem>)}
-          </SelectContent>
-        </Select>
+          <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
+              <SelectValue placeholder="Proyecto..." />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              {projects.map(p => <SelectItem key={p} value={p}>{p || "Sin proyecto"}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar relative px-6 w-full max-w-7xl mx-auto pb-40">
