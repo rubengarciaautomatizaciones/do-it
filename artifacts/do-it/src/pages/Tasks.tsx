@@ -164,7 +164,7 @@ export default function Tasks() {
       <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-24 bg-white z-30" />
 
       {/* Degradado que empieza justo detrás del input hacia arriba */}
-      <div className="pointer-events-none fixed bottom-24 left-0 right-0 h-20 bg-gradient-to-t from-white via-white/50 to-transparent z-30" />
+      <div className="pointer-events-none fixed bottom-24 left-0 right-0 h-10 bg-gradient-to-t from-white via-white/50 to-transparent z-30" />
       
       <MagicInput />
       <BottomTabBar />
