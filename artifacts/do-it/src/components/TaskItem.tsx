@@ -4,7 +4,7 @@ import { useUpdateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata,
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Mic, Clock, X, Bell, Folder } from 'lucide-react';
+import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Mic, Clock, X, Bell, Folder, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '../lib/supabase';
@@ -14,6 +14,11 @@ import { RichTextEditor } from './RichTextEditor';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// --- CONFIGURACIÓN DE REACT-PDF ---
+import { Document, Page, pdfjs } from 'react-pdf';
+// Usamos el CDN para el worker, evita problemas de empaquetado con Vite
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
 // --- PREVISUALIZACIÓN DE ENLACES (Estilo WhatsApp / Twitter Card) ---
 function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   const { data, isLoading } = useGetTaskMetadata({ url });
@@ -22,19 +27,60 @@ function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   return (
     <a href={url} target="_blank" rel="noreferrer" className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/link transition-all hover:shadow-md cursor-pointer block">
       {isLoading ? (
-        <div className="w-full h-32 bg-gray-200 animate-pulse" />
+        <div className="w-full h-32 bg-gray-200 animate-pulse flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        </div>
       ) : data?.image ? (
         <div className="w-full h-32 bg-gray-200 relative">
           <img src={data.image} alt="preview" className="w-full h-full object-cover" />
         </div>
       ) : (
-        <div className="w-full h-16 bg-gray-100 flex items-center justify-center"><LinkIcon className="w-6 h-6 text-gray-400" /></div>
+        <div className="w-full h-32 bg-gray-100 flex items-center justify-center"><LinkIcon className="w-8 h-8 text-gray-300" /></div>
       )}
-      <div className="p-3">
+      <div className="p-3 bg-white">
         <p className="text-sm font-medium text-gray-900 line-clamp-1">{data?.title || url}</p>
         {data?.description && <p className="text-xs text-gray-500 line-clamp-2 mt-1">{data.description}</p>}
         <p className="text-[10px] text-gray-400 mt-2 uppercase font-semibold tracking-wider">{hostname}</p>
       </div>
+      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }} className="absolute top-2 right-2 z-10 p-1.5 text-gray-500 hover:text-black hover:bg-white/90 rounded-full bg-white/50 backdrop-blur-md transition-colors shadow-sm">
+        <X className="w-4 h-4" />
+      </button>
+    </a>
+  );
+}
+
+// --- PREVISUALIZACIÓN DE ARCHIVOS (Imágenes, PDFs, Audios) ---
+function AttachmentPreview({ att, onRemove }: { att: any, onRemove: () => void }) {
+  const isImage = att.fileType.includes('image');
+  const isPdf = att.fileType === 'application/pdf';
+  const isAudio = att.fileType.includes('audio');
+
+  return (
+    <a href={att.fileUrl} target="_blank" rel="noreferrer" className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/file transition-all hover:shadow-md cursor-pointer block">
+      <div className="w-full h-32 bg-gray-100 relative flex items-center justify-center overflow-hidden">
+        {isImage && <img src={att.fileUrl} alt={att.fileName} className="w-full h-full object-cover" />}
+
+        {isPdf && (
+          <div className="w-full h-full flex items-center justify-center overflow-hidden bg-white">
+            <Document 
+              file={att.fileUrl} 
+              loading={<Loader2 className="w-6 h-6 animate-spin text-gray-300" />}
+              error={<File className="w-8 h-8 text-gray-300" />}
+            >
+              <Page pageNumber={1} width={250} renderTextLayer={false} renderAnnotationLayer={false} />
+            </Document>
+          </div>
+        )}
+
+        {isAudio && <Mic className="w-8 h-8 text-gray-300" />}
+        {!isImage && !isPdf && !isAudio && <File className="w-8 h-8 text-gray-300" />}
+      </div>
+
+      <div className="p-3 bg-white">
+        <p className="text-sm font-medium text-gray-900 line-clamp-1">{att.fileName}</p>
+        <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold tracking-wider">{att.fileType.split('/')[1] || 'Archivo'}</p>
+      </div>
+
       <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }} className="absolute top-2 right-2 z-10 p-1.5 text-gray-500 hover:text-black hover:bg-white/90 rounded-full bg-white/50 backdrop-blur-md transition-colors shadow-sm">
         <X className="w-4 h-4" />
       </button>
@@ -257,31 +303,14 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
           </button>
         </div>
 
-        {/* LISTA DE ENLACES Y ARCHIVOS ABAJO */}
+        {/* LISTA DE ENLACES Y ARCHIVOS ABAJO (ESTILO WHATSAPP) */}
         {(task.links && task.links.length > 0) || (task.attachments && task.attachments.length > 0) ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {task.links?.map((link, i) => (
               <LinkPreview key={i} url={link} onRemove={() => removeLink(link)} />
             ))}
             {task.attachments?.map((att) => (
-              <a key={att.id} href={att.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group/file relative overflow-hidden hover:shadow-md transition-all cursor-pointer">
-                {att.fileType.includes('image') ? (
-                  <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
-                    <img src={att.fileUrl} alt={att.fileName} className="w-full h-full object-cover" />
-                  </div>
-                ) : (
-                  <div className="w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm flex-shrink-0">
-                    {att.fileType.includes('audio') ? <Mic className="w-5 h-5 text-black" /> : <File className="w-5 h-5 text-black" />}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{att.fileName}</p>
-                  <p className="text-xs text-gray-500 uppercase">{att.fileType.split('/')[1] || 'Archivo'}</p>
-                </div>
-                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeAttachment(att.id); }} className="absolute top-2 right-2 z-10 p-1.5 text-gray-500 hover:text-black hover:bg-white/90 rounded-full bg-white/50 backdrop-blur-md transition-colors shadow-sm">
-                  <X className="w-4 h-4" />
-                </button>
-              </a>
+              <AttachmentPreview key={att.id} att={att} onRemove={() => removeAttachment(att.id)} />
             ))}
           </div>
         ) : null}

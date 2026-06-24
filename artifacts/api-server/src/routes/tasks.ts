@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { db, tasksTable, taskAttachmentsTable } from "@workspace/db";
 import { GoogleGenAI } from "@google/genai";
+import ogs from "open-graph-scraper";
 import {
   GetTasksQueryParams,
   CreateTaskBody,
@@ -74,7 +75,7 @@ router.post("/tasks", async (req, res) => {
     descripcion: descripcion ?? null, 
     fechaVencimiento: fechaVencimiento ?? null,
     horaVencimiento: horaVencimiento ?? null,
-    proyecto: null, // FORZAMOS NULL PARA QUE NO HAYA PROYECTO
+    proyecto: null,
     links: links ?? [],
     notificaciones: notificaciones ?? []
   }).returning();
@@ -109,15 +110,18 @@ router.post("/tasks/magic-text", async (req, res) => {
   if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
 
   const ai = new GoogleGenAI({ apiKey });
+
+  // PROMPT MEJORADO: Extrae la acción principal sin cortar artificialmente
   const prompt = `Actúa como un asistente personal. Analiza esta orden del usuario. 
-  1. Extrae la intención para crear un 'titulo' EXTREMADAMENTE CORTO (MÁXIMO 5 PALABRAS).
+  1. Extrae la acción principal para crear un 'titulo' claro y directo (ej: "Recoger al niño del fútbol"). No lo cortes artificialmente.
   2. Si menciona una fecha (ej: mañana, el viernes), conviértelo a YYYY-MM-DD en 'fecha_vencimiento'. Referencia: hoy es ${new Date().toISOString()}.
   3. Si menciona una hora, ponla en HH:mm en 'hora_vencimiento'.
   Devuelve SOLO JSON: {"titulo": "string", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null"}. 
   Texto del usuario: "${text}"`;
 
+  // FALLBACK PROTEGIDO: Si falla la IA, usamos el texto completo
   let extractedTask = { 
-    titulo: text.split(" ").slice(0, 5).join(" ") + (text.split(" ").length > 5 ? "..." : ""), 
+    titulo: text, 
     fecha_vencimiento: null, 
     hora_vencimiento: null 
   };
@@ -140,7 +144,7 @@ router.post("/tasks/magic-text", async (req, res) => {
     descripcion: text, 
     fechaVencimiento: extractedTask.fecha_vencimiento ?? null,
     horaVencimiento: extractedTask.hora_vencimiento ?? null,
-    proyecto: null, // FORZAMOS NULL PARA QUE NO HAYA PROYECTO
+    proyecto: null,
   }).returning();
 
   return res.status(201).json({ ...mapTask(task), attachments: [] });
@@ -195,21 +199,23 @@ router.delete("/tasks/:taskId/attachments/:attachmentId", async (req, res) => {
   return res.status(204).send();
 });
 
+// RUTA ACTUALIZADA: Extraer metadatos usando open-graph-scraper
 router.get("/tasks/metadata", async (req, res) => {
   const url = req.query.url as string;
   if (!url) return res.status(400).json({ error: "URL required" });
+
   try {
-    const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    const html = await response.text();
+    const options = { url, timeout: 5000 };
+    const { result } = await ogs(options);
 
-    const getTag = (regex: RegExp) => { const match = html.match(regex); return match ? match[1] : null; };
-
-    const title = getTag(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i) || getTag(/<title[^>]*>([^<]+)<\/title>/i);
-    const description = getTag(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i) || getTag(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i);
-    const image = getTag(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
-
-    return res.json({ title, description, image, url });
+    return res.json({ 
+      title: result.ogTitle || result.twitterTitle || url, 
+      description: result.ogDescription || result.twitterDescription || null, 
+      image: result.ogImage?.[0]?.url || result.twitterImage?.[0]?.url || null, 
+      url 
+    });
   } catch (e) {
+    // Fallback silencioso si la URL bloquea el scraping
     return res.json({ title: url, description: null, image: null, url });
   }
 });

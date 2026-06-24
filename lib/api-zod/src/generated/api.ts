@@ -7,7 +7,6 @@
  */
 import * as zod from 'zod';
 
-
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
@@ -208,5 +207,3 @@ export const TranscribeAudioBody = zod.object({
   "audioBase64": zod.string(),
   "mimeType": zod.string()
 })
-
-
