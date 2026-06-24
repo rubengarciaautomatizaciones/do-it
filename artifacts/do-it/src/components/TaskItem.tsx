@@ -4,8 +4,8 @@ import { useUpdateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata,
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Loader2, Mic, Clock, X, Download, Bell, Folder } from 'lucide-react';
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Calendar, Trash2, Link as LinkIcon, Paperclip, Plus, File, Image as ImageIcon, Mic, Clock, X, Download, Bell, Folder } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,15 +39,26 @@ function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   );
 }
 
+// --- BOTÓN DE ELIMINAR CON TIMEOUT ---
 function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => void }) {
   const [isConfirming, setIsConfirming] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isConfirming) {
+      // Si a los 2 segundos no confirma, vuelve al estado inicial
+      timer = setTimeout(() => setIsConfirming(false), 2000);
+    }
+    return () => clearTimeout(timer);
+  }, [isConfirming]);
+
   return (
-    <div className="relative flex items-center justify-end h-8" onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+    <div className="relative flex items-center justify-end h-8 min-w-[70px]" onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
       <AnimatePresence mode="wait">
         {!isConfirming ? (
           <motion.button
             key="trash"
-            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsConfirming(true); }}
             className="text-gray-400 hover:text-black p-2 rounded-lg transition-colors"
           >
@@ -56,9 +67,9 @@ function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => 
         ) : (
           <motion.button
             key="confirm"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(e); setIsConfirming(false); }}
-            className="bg-black text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm"
+            className="bg-black text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center shadow-sm"
           >
             Eliminar
           </motion.button>
@@ -97,7 +108,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
-  const deleteTask = useDeleteTask();
   const addAttachment = useAddTaskAttachment();
 
   const [isAddingLink, setIsAddingLink] = useState(false);
@@ -124,17 +134,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
     }
     setIsCreatingProject(false);
     setNewProjectName("");
-  };
-
-  const handleDelete = (e?: React.MouseEvent) => {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    if (onClose) onClose(); 
-    deleteTask.mutate({ id: task.id }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
-      }
-    });
   };
 
   const handleAddLink = (e: React.FormEvent) => {
@@ -173,7 +172,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
     });
   };
 
-  // Obtener lista de proyectos existentes
   const tasksData = queryClient.getQueryData<Task[]>(getGetTasksQueryKey());
   const projects = Array.from(new Set(tasksData?.map(t => t.proyecto).filter(Boolean) || []));
 
@@ -182,7 +180,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
       <RichTextEditor content={task.descripcion || ''} onChange={handleDescriptionChange} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* TARJETA PROYECTO */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Proyecto</p>
           <div className="flex items-center gap-2">
@@ -213,7 +210,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
           </div>
         </div>
 
-        {/* TARJETA LÍMITE */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Fecha Límite</p>
           <div className="flex items-center gap-2 mb-2">
@@ -226,7 +222,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
           </div>
         </div>
 
-        {/* TARJETA NOTIFICACIÓN */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Notificación</p>
           <div className="flex items-center gap-2 mb-2">
@@ -240,7 +235,6 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
         </div>
       </div>
 
-      {/* ENLACES Y ARCHIVOS (2 COLUMNAS) */}
       <div className="space-y-3">
         {(task.links && task.links.length > 0) || (task.attachments && task.attachments.length > 0) ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -315,45 +309,6 @@ function EditableTitle({ task }: { task: Task }) {
   );
 }
 
-function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => void }) {
-  const [isConfirming, setIsConfirming] = useState(false);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isConfirming) {
-      // Si a los 2 segundos no confirma, vuelve al estado inicial
-      timer = setTimeout(() => setIsConfirming(false), 2000);
-    }
-    return () => clearTimeout(timer);
-  }, [isConfirming]);
-
-  return (
-    <div className="relative flex items-center justify-end h-8 min-w-[70px]" onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
-      <AnimatePresence mode="wait">
-        {!isConfirming ? (
-          <motion.button
-            key="trash"
-            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsConfirming(true); }}
-            className="text-gray-400 hover:text-black p-2 rounded-lg transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </motion.button>
-        ) : (
-          <motion.button
-            key="confirm"
-            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(e); setIsConfirming(false); }}
-            className="bg-black text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center shadow-sm"
-          >
-            Eliminar
-          </motion.button>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 export function TaskRowDesktop({ task }: { task: Task }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -380,6 +335,9 @@ export function TaskRowDesktop({ task }: { task: Task }) {
           id={`task-${task.id}`}
           className={`group border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer`}
         >
+          <td className="p-2 text-center">
+            <Checkbox completada={task.completada} onToggle={toggleComplete} />
+          </td>
           <td className={`p-3 text-[15px] max-w-[200px] truncate ${task.completada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
             {task.titulo}
           </td>
