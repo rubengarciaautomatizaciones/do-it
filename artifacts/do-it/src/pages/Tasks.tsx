@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useGetTasks, getGetTasksQueryKey, Task } from '@workspace/api-client-react';
+import { useGetTasks, getGetTasksQueryKey } from '@workspace/api-client-react';
 import { TaskItemMobile, TaskRowDesktop } from '../components/TaskItem';
 import { MagicInput } from '../components/MagicInput';
 import { BottomTabBar } from '../components/BottomTabBar';
@@ -68,14 +68,15 @@ export default function Tasks() {
   return (
     <div className="h-[100dvh] flex flex-col bg-white overflow-hidden">
 
-      <div className="px-6 pt-12 pb-4 flex-shrink-0 w-full max-w-7xl mx-auto bg-white z-20">
+      <div className="px-3 md:px-6 pt-12 pb-4 flex-shrink-0 w-full max-w-[1600px] mx-auto bg-white z-20">
         <h1 className="text-3xl font-semibold tracking-tight text-[#111111] mb-6">
           Tareas
         </h1>
 
-        <div className="bg-gray-50 border border-gray-100 p-1.5 rounded-full flex flex-wrap items-center gap-2 w-fit">
+        {/* FILTROS ESTRICTAMENTE HORIZONTALES */}
+        <div className="bg-gray-50 border border-gray-100 p-1.5 rounded-full flex flex-row flex-nowrap items-center gap-2 w-fit max-w-full overflow-x-auto no-scrollbar">
           <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
+            <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0 whitespace-nowrap">
               <SelectValue placeholder="Estado..." />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -86,7 +87,7 @@ export default function Tasks() {
           </Select>
 
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
+            <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0 whitespace-nowrap">
               <SelectValue placeholder="Ordenar por..." />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -100,7 +101,7 @@ export default function Tasks() {
           </Select>
 
           <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0">
+            <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0 whitespace-nowrap">
               <SelectValue placeholder="Proyecto..." />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -110,27 +111,30 @@ export default function Tasks() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar relative px-6 w-full max-w-7xl mx-auto pb-40">
+      {/* CONTENEDOR DE LA TABLA CON SCROLL INDEPENDIENTE PARA STICKY HEADER */}
+      <div className="flex-1 relative w-full max-w-[1600px] mx-auto px-2 md:px-6 pb-32 flex flex-col min-h-0">
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
         ) : isMobile ? (
-          <motion.div layout className="flex flex-col gap-1">
-            <AnimatePresence>
-              {filteredAndSortedTasks.map((task) => (
-                <TaskItemMobile key={task.id} task={task} />
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          <div className="overflow-y-auto no-scrollbar h-full pb-20">
+            <motion.div layout className="flex flex-col gap-1">
+              <AnimatePresence>
+                {filteredAndSortedTasks.map((task) => (
+                  <TaskItemMobile key={task.id} task={task} />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          </div>
         ) : (
-          <div className="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+          <div className="flex-1 overflow-y-auto no-scrollbar border border-gray-100 rounded-xl shadow-sm bg-white relative">
             <table className="w-full text-sm text-left table-fixed">
-              <thead className="bg-gray-50/80 text-gray-500 border-b border-gray-100 sticky top-0 z-10">
+              <thead className="bg-gray-50/95 backdrop-blur-sm text-gray-500 border-b border-gray-100 sticky top-0 z-20">
                 <tr>
                   <th className="w-14 p-3 text-center font-medium"></th>
                   <th className="w-1/4 p-3 font-medium">Título</th>
                   <th className="w-1/4 p-3 font-medium">Descripción</th>
-                  <th className="w-32 p-3 font-medium">Límite</th>
-                  <th className="w-32 p-3 font-medium">Notificación</th>
+                  <th className="w-40 p-3 font-medium">Límite</th>
+                  <th className="w-40 p-3 font-medium">Notificación</th>
                   <th className="w-32 p-3 font-medium">Proyecto</th>
                   <th className="w-24 p-3 font-medium">Adjuntos</th>
                   <th className="w-14 p-3 font-medium"></th>
@@ -152,7 +156,7 @@ export default function Tasks() {
         )}
       </div>
 
-      <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white via-white/90 to-transparent z-30" />
+      <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white via-white/90 to-transparent z-30" />
 
       <MagicInput />
       <BottomTabBar />

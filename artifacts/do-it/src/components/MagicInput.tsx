@@ -12,7 +12,6 @@ export function MagicInput() {
   const { toast } = useToast();
   const [text, setText] = useState('');
 
-  // Audio State
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
@@ -62,7 +61,7 @@ export function MagicInput() {
 
   const cancelRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.onstop = null; // Previene envío
+      mediaRecorderRef.current.onstop = null; 
       mediaRecorderRef.current.stop();
     }
     stream?.getTracks().forEach(track => track.stop());
@@ -109,7 +108,7 @@ export function MagicInput() {
     setStream(null);
   };
 
-  // El Canvas Analizador de Audio a 60fps conectado a GPU
+  // ANIMACIÓN ESTILO CHATGPT
   useEffect(() => {
     if (!isRecording || !stream || !canvasRef.current) return;
     const audioCtx = new AudioContext();
@@ -118,8 +117,7 @@ export function MagicInput() {
     source.connect(analyser);
     analyser.fftSize = 64; 
 
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     let animationId: number;
@@ -130,21 +128,30 @@ export function MagicInput() {
       if(!ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const gap = 3;
-      const barWidth = 4;
-      const totalBars = Math.floor(canvas.width / (barWidth + gap));
-      const step = Math.floor(bufferLength / totalBars) || 1;
+      // Tomamos 5 frecuencias bajas/medias (la voz humana)
+      const values = [
+        dataArray[1] || 0,
+        dataArray[3] || 0,
+        dataArray[5] || 0,
+        dataArray[7] || 0,
+        dataArray[9] || 0
+      ];
 
-      for (let i = 0; i < totalBars; i++) {
-        const value = dataArray[i * step] || 0;
-        const percent = value / 255;
-        const height = Math.max(4, percent * canvas.height);
+      const barWidth = 6;
+      const gap = 6;
+      const totalWidth = (5 * barWidth) + (4 * gap);
+      const startX = (canvas.width - totalWidth) / 2; // Centrado perfecto
 
-        ctx.fillStyle = '#111111'; // Barras color negro/oscuro
+      values.forEach((val, i) => {
+        const percent = val / 255;
+        const minHeight = 4;
+        const height = minHeight + (percent * (canvas.height - minHeight));
+
+        ctx.fillStyle = '#111111';
         ctx.beginPath();
-        ctx.roundRect(i * (barWidth + gap), (canvas.height - height) / 2, barWidth, height, 2);
+        ctx.roundRect(startX + i * (barWidth + gap), (canvas.height - height) / 2, barWidth, height, 3);
         ctx.fill();
-      }
+      });
     };
     draw();
 
@@ -167,8 +174,7 @@ export function MagicInput() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="flex items-center shadow-xl rounded-full bg-white border border-gray-100 p-2 overflow-hidden h-14"
           >
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse ml-4 mr-2 flex-shrink-0" />
-            <canvas ref={canvasRef} width={200} height={32} className="flex-1 min-w-0 px-2" />
+            <canvas ref={canvasRef} width={200} height={32} className="flex-1 min-w-0 px-4" />
             <div className="flex items-center gap-1">
               <button type="button" onClick={cancelRecording} className="p-2 rounded-full text-gray-400 hover:bg-gray-100 hover:text-black transition-colors">
                 <X className="w-5 h-5" />

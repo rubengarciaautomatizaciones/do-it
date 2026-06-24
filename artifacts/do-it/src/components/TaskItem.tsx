@@ -14,39 +14,41 @@ import { RichTextEditor } from './RichTextEditor';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// --- PREVISUALIZACIÓN DE ENLACES (Estilo WhatsApp) ---
+// --- PREVISUALIZACIÓN DE ENLACES (Estilo WhatsApp / Twitter Card) ---
 function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   const { data, isLoading } = useGetTaskMetadata({ url });
+  const hostname = new URL(url).hostname.replace('www.', '');
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 group/link relative overflow-hidden">
+    <div className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/link transition-all hover:shadow-md">
       {isLoading ? (
-        <div className="w-12 h-12 bg-gray-200 rounded animate-pulse flex-shrink-0" />
+        <div className="w-full h-32 bg-gray-200 animate-pulse" />
       ) : data?.image ? (
-        <img src={data.image} alt="preview" className="w-12 h-12 rounded object-cover flex-shrink-0" />
+        <div className="w-full h-32 bg-gray-200 relative">
+          <img src={data.image} alt="preview" className="w-full h-full object-cover" />
+        </div>
       ) : (
-        <div className="w-12 h-12 bg-white rounded flex items-center justify-center shadow-sm flex-shrink-0"><LinkIcon className="w-5 h-5 text-gray-400" /></div>
+        <div className="w-full h-16 bg-gray-100 flex items-center justify-center"><LinkIcon className="w-6 h-6 text-gray-400" /></div>
       )}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{data?.title || url}</p>
-        <p className="text-xs text-gray-500 truncate">{new URL(url).hostname}</p>
+      <div className="p-3">
+        <p className="text-sm font-medium text-gray-900 line-clamp-1">{data?.title || url}</p>
+        {data?.description && <p className="text-xs text-gray-500 line-clamp-2 mt-1">{data.description}</p>}
+        <p className="text-[10px] text-gray-400 mt-2 uppercase font-semibold tracking-wider">{hostname}</p>
       </div>
       <a href={url} target="_blank" rel="noreferrer" className="absolute inset-0 z-0"></a>
-      <button onClick={(e) => { e.preventDefault(); onRemove(); }} className="relative z-10 p-2 text-gray-400 hover:text-black rounded-lg transition-colors bg-gray-50/80 backdrop-blur-sm">
+      <button onClick={(e) => { e.preventDefault(); onRemove(); }} className="absolute top-2 right-2 z-10 p-1.5 text-gray-500 hover:text-black hover:bg-white/90 rounded-full bg-white/50 backdrop-blur-md transition-colors shadow-sm">
         <X className="w-4 h-4" />
       </button>
     </div>
   );
 }
 
-// --- BOTÓN DE ELIMINAR CON TIMEOUT ---
 function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => void }) {
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isConfirming) {
-      // Si a los 2 segundos no confirma, vuelve al estado inicial
       timer = setTimeout(() => setIsConfirming(false), 2000);
     }
     return () => clearTimeout(timer);
@@ -345,10 +347,10 @@ export function TaskRowDesktop({ task }: { task: Task }) {
             {plainTextDescription}
           </td>
           <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
-            {task.fechaVencimiento ? format(new Date(task.fechaVencimiento), "d MMM yyyy", { locale: es }) : ''}
+            {task.fechaVencimiento ? `${format(new Date(task.fechaVencimiento), "d MMM yyyy", { locale: es })}${task.horaVencimiento ? ` · ${task.horaVencimiento}` : ''}` : ''}
           </td>
           <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
-            {task.fechaNotificacion ? format(new Date(task.fechaNotificacion), "d MMM yyyy", { locale: es }) : ''}
+            {task.fechaNotificacion ? `${format(new Date(task.fechaNotificacion), "d MMM yyyy", { locale: es })}${task.horaNotificacion ? ` · ${task.horaNotificacion}` : ''}` : ''}
           </td>
           <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
             {task.proyecto}

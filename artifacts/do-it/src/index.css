@@ -141,8 +141,11 @@
     scrollbar-width: none;  /* Firefox */
   }
   /* Ocultar el placeholder de TipTap inmediatamente al hacer focus */
-  .ProseMirror:focus p.is-editor-empty::before {
-    content: none !important;
+  .ProseMirror:focus [data-placeholder]::before,
+  .ProseMirror:focus-within [data-placeholder]::before,
+  .ProseMirror:focus .is-editor-empty::before {
     display: none !important;
+    content: none !important;
+    opacity: 0 !important;
   }
 }
