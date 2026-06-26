@@ -39,7 +39,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
-      <Route path="/app">
+      <Route path="/tasks">
         {() => <ProtectedRoute component={Tasks} />}
       </Route>
       <Route path="/habits">

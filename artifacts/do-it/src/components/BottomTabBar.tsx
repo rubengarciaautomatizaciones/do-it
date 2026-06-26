@@ -6,14 +6,14 @@ export function BottomTabBar() {
   const [location] = useLocation();
 
   const tabs = [
-    { href: '/app', icon: CheckSquare, label: 'Tareas' },
+    { href: '/tasks', icon: CheckSquare, label: 'Tareas' },
     { href: '/habits', icon: CalendarDays, label: 'Hábitos' },
     { href: '/calendar', icon: CalendarDays, label: 'Calendario' },
     { href: '/profile', icon: User, label: 'Perfil' },
   ];
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+    <div id="tour-bottom-bar" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
       <div className="flex items-center gap-2 bg-white/80 backdrop-blur-md px-6 py-3 rounded-full border border-gray-100 shadow-sm">
         {tabs.map((tab) => {
           const isActive = location === tab.href;

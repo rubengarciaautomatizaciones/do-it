@@ -7,6 +7,7 @@ export const userPreferencesTable = pgTable("user_preferences", {
   userId: uuid("user_id").notNull().unique(),
   idioma: text("idioma").notNull().default("es"),
   inicioSemana: text("inicio_semana").notNull().default("lunes"),
+  hasSeenTutorial: boolean("has_seen_tutorial").notNull().default(false), // <-- NUEVO
   isPremium: boolean("is_premium").notNull().default(false),
   aiUsageCount: integer("ai_usage_count").notNull().default(0),
   aiUsageResetDate: timestamp("ai_usage_reset_date").notNull().defaultNow(),

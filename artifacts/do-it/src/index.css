@@ -150,3 +150,33 @@
     opacity: 0 !important;
   }
 }
+
+/* Driver.js Custom Theme */
+.driverjs-theme {
+  font-family: 'Inter', sans-serif !important;
+  border-radius: 16px !important;
+  border: 1px solid #F5F5F5 !important;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1) !important;
+  padding: 20px !important;
+}
+.driver-popover-title {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: #111111 !important;
+  margin-bottom: 8px !important;
+}
+.driver-popover-description {
+  font-size: 14px !important;
+  color: #A3A3A3 !important;
+  line-height: 1.5 !important;
+}
+.driver-popover-footer button {
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  text-shadow: none !important;
+}
+.driver-popover-next-btn {
+  background-color: #111111 !important;
+  color: white !important;
+  border: none !important;
+}

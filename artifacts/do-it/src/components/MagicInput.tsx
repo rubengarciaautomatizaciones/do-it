@@ -177,7 +177,7 @@ export function MagicInput() {
   const isWorking = createMagicTask.isPending || transcribeAudio.isPending;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-40 max-w-2xl mx-auto">
+    <div id="tour-magic-input" className="fixed bottom-24 left-4 right-4 z-40 max-w-2xl mx-auto">
       <AnimatePresence mode="wait">
         {isRecording ? (
           <motion.div 

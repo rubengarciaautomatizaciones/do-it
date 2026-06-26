@@ -10,6 +10,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Onboarding } from '../components/Onboarding';
+
 
 export default function Tasks() {
   const { data: tasks, isLoading } = useGetTasks();
@@ -116,7 +118,7 @@ export default function Tasks() {
         </div>
       </div>
 
-      <div className="flex-1 relative w-full max-w-[1600px] mx-auto px-2 md:px-6 flex flex-col min-h-0">
+      <div id="tour-task-list"className="flex-1 relative w-full max-w-[1600px] mx-auto px-2 md:px-6 flex flex-col min-h-0">
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
         ) : isMobile ? (
@@ -165,7 +167,8 @@ export default function Tasks() {
 
       {/* Degradado que empieza justo detrás del input hacia arriba */}
       <div className="pointer-events-none fixed bottom-24 left-0 right-0 h-15 bg-gradient-to-t from-white via-white/50 to-transparent z-30" />
-      
+
+      <Onboarding />
       <MagicInput />
       <BottomTabBar />
     </div>

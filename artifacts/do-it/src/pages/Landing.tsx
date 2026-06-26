@@ -11,7 +11,7 @@ export default function Landing() {
   // Si ya está logueado, lo mandamos directo a la app
   React.useEffect(() => {
     if (!loading && user) {
-      setLocation('/app');
+      setLocation('/tasks');
     }
   }, [user, loading, setLocation]);
 

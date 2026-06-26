@@ -14,7 +14,7 @@ export default function Login() {
   // Redirect if already logged in
   React.useEffect(() => {
     if (user) {
-      setLocation('/');
+      setLocation('/tasks');
     }
   }, [user, setLocation]);
 

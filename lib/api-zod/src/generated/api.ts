@@ -221,20 +221,23 @@ export const GetPreferencesResponse = zod.object({
   "id": zod.string(),
   "userId": zod.string(),
   "idioma": zod.string(),
-  "inicioSemana": zod.string()
+  "inicioSemana": zod.string(),
+  "hasSeenTutorial": zod.boolean()
 })
 
 
 export const UpdatePreferencesBody = zod.object({
   "idioma": zod.string().optional(),
-  "inicioSemana": zod.string().optional()
+  "inicioSemana": zod.string().optional(),
+  "hasSeenTutorial": zod.boolean().optional()
 })
 
 export const UpdatePreferencesResponse = zod.object({
   "id": zod.string(),
   "userId": zod.string(),
   "idioma": zod.string(),
-  "inicioSemana": zod.string()
+  "inicioSemana": zod.string(),
+  "hasSeenTutorial": zod.boolean()
 })
 
 

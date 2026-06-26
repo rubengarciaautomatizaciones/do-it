@@ -166,11 +166,13 @@ export interface UserPreference {
   userId: string;
   idioma: string;
   inicioSemana: string;
+  hasSeenTutorial: boolean;
 }
 
 export interface UserPreferenceUpdate {
   idioma?: string;
   inicioSemana?: string;
+  hasSeenTutorial?: boolean;
 }
 
 export type GetTasksParams = {

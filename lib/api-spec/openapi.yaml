@@ -528,15 +528,17 @@ components:
 
     UserPreference:
       type: object
-      required: [id, userId, idioma, inicioSemana]
+      required: [id, userId, idioma, inicioSemana, hasSeenTutorial]
       properties:
         id: { type: string }
         userId: { type: string }
         idioma: { type: string }
         inicioSemana: { type: string }
+        hasSeenTutorial: { type: boolean }
 
     UserPreferenceUpdate:
       type: object
       properties:
         idioma: { type: string }
         inicioSemana: { type: string }
+        hasSeenTutorial: { type: boolean }
