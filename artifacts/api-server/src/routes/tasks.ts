@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, and, sql, inArray } from "drizzle-orm";
-import { db, tasksTable, taskAttachmentsTable } from "@workspace/db";
+import { db, tasksTable, taskAttachmentsTable, userPreferencesTable } from "@workspace/db";
 import { GoogleGenAI } from "@google/genai";
 import ogs from "open-graph-scraper";
 import {
@@ -81,7 +81,9 @@ router.post("/tasks", async (req, res) => {
     notificaciones: notificaciones ?? []
   }).returning();
 
-  await syncTaskToGoogle(task, userId);
+  // Fire-and-forget: Sincronizamos en segundo plano para no bloquear la respuesta UI
+  syncTaskToGoogle(task, userId).catch(err => req.log.error({ err }, "Error syncing to Google Calendar"));
+
   return res.status(201).json({ ...mapTask(task), attachments: [] });
 });
 
@@ -165,7 +167,9 @@ router.post("/tasks/magic-text", async (req, res) => {
     userId, titulo: extractedTask.titulo, descripcion: text, fechaVencimiento: extractedTask.fecha_vencimiento ?? null, horaVencimiento: extractedTask.hora_vencimiento ?? null, proyecto: null,
   }).returning();
 
-  await syncTaskToGoogle(task, userId);
+  // Fire-and-forget
+  syncTaskToGoogle(task, userId).catch(err => req.log.error({ err }, "Error syncing to Google Calendar"));
+
   return res.status(201).json({ ...task, attachments: [] });
 });
 
@@ -193,7 +197,10 @@ router.patch("/tasks/:id", async (req, res) => {
   }).where(eq(tasksTable.id, id)).returning();
 
   if (!task) return res.status(404).json({ error: "Task not found" });
-  await syncTaskToGoogle(task, task.userId);
+
+  // Fire-and-forget
+  syncTaskToGoogle(task, task.userId).catch(err => req.log.error({ err }, "Error syncing to Google Calendar"));
+
   return res.json(mapTask(task));
 });
 
@@ -207,7 +214,8 @@ router.delete("/tasks/:id", async (req, res) => {
   if (task) {
     await db.delete(tasksTable).where(eq(tasksTable.id, parsed.data.id));
     if (task.googleEventId) {
-      await deleteTaskFromGoogle(task.googleEventId, task.userId);
+      // Fire-and-forget
+      deleteTaskFromGoogle(task.googleEventId, task.userId).catch(err => req.log.error({ err }, "Error deleting from Google Calendar"));
     }
   }
 
