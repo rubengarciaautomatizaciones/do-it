@@ -106,36 +106,26 @@ router.post("/tasks/magic-text", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
 
   const { text, userId } = parsed.data;
+
+  // 1. COMPROBAR LÍMITES DE IA
+  let [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
+  if (!prefs) {
+    [prefs] = await db.insert(userPreferencesTable).values({ userId }).returning();
+  }
+  if (!prefs.isPremium && prefs.aiUsageCount >= 3) {
+    return res.status(403).json({ error: "LIMIT_REACHED", message: "Has alcanzado el límite de 3 usos gratuitos." });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
 
   const ai = new GoogleGenAI({ apiKey });
-
-  // Calculamos la hora exacta en Madrid para dársela a la IA
-  const formatter = new Intl.DateTimeFormat('es-ES', { 
-    timeZone: 'Europe/Madrid', 
-    year: 'numeric', month: '2-digit', day: '2-digit', 
-    hour: '2-digit', minute: '2-digit' 
-  });
+  const formatter = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   const madridTime = formatter.format(new Date());
 
-  // PROMPT BLINDADO
-  const prompt = `Actúa como un asistente personal ultra-inteligente. Analiza esta orden del usuario.
-  La fecha y hora actual en España/Madrid es: ${madridTime}.
+  const prompt = `Actúa como un asistente personal ultra-inteligente. Analiza esta orden del usuario. La fecha y hora actual en España/Madrid es: ${madridTime}. REGLAS ESTRICTAS: 1. 'titulo': Extrae SOLO la acción principal. ELIMINA del título cualquier mención a fechas o horas. 2. 'fecha_vencimiento': Si menciona un día, calcúlalo basándote en la fecha actual y devuélvelo en formato "YYYY-MM-DD". Si no, null. 3. 'hora_vencimiento': Si menciona una hora, devuélvela en formato 24h "HH:mm". Si no, null. Devuelve SOLO un JSON válido: {"titulo": "string", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null"}. Texto del usuario: "${text}"`;
 
-  REGLAS ESTRICTAS:
-  1. 'titulo': Extrae SOLO la acción principal (ej: "Recoger al niño del fútbol"). ELIMINA del título cualquier mención a fechas o horas (quita palabras como "mañana", "a las 12", etc).
-  2. 'fecha_vencimiento': Si menciona un día, calcúlalo basándote en la fecha actual y devuélvelo en formato "YYYY-MM-DD". Si no, null.
-  3. 'hora_vencimiento': Si menciona una hora, devuélvela en formato 24h "HH:mm". Si no, null.
-
-  Devuelve SOLO un JSON válido: {"titulo": "string", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null"}.
-  Texto del usuario: "${text}"`;
-
-  let extractedTask = { 
-    titulo: text, 
-    fecha_vencimiento: null, 
-    hora_vencimiento: null 
-  };
+  let extractedTask = { titulo: text, fecha_vencimiento: null, hora_vencimiento: null };
 
   try {
     const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt });
@@ -145,20 +135,18 @@ router.post("/tasks/magic-text", async (req, res) => {
     extractedTask.titulo = parsedData.titulo || extractedTask.titulo;
     extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
     extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
+
+    // 2. INCREMENTAR CONTADOR SI FUE EXITOSO
+    await db.update(userPreferencesTable).set({ aiUsageCount: prefs.aiUsageCount + 1 }).where(eq(userPreferencesTable.userId, userId));
   } catch (err) {
-    req.log.error({ err }, "Gemini text extraction failed, fallback to raw text applied");
+    req.log.error({ err }, "Gemini text extraction failed");
   }
 
   const [task] = await db.insert(tasksTable).values({
-    userId,
-    titulo: extractedTask.titulo,
-    descripcion: text, 
-    fechaVencimiento: extractedTask.fecha_vencimiento ?? null,
-    horaVencimiento: extractedTask.hora_vencimiento ?? null,
-    proyecto: null,
+    userId, titulo: extractedTask.titulo, descripcion: text, fechaVencimiento: extractedTask.fecha_vencimiento ?? null, horaVencimiento: extractedTask.hora_vencimiento ?? null, proyecto: null,
   }).returning();
 
-  return res.status(201).json({ ...mapTask(task), attachments: [] });
+  return res.status(201).json({ ...task, attachments: [] });
 });
 
 router.patch("/tasks/:id", async (req, res) => {

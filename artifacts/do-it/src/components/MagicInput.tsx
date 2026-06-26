@@ -6,11 +6,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../hooks/use-toast';
 import { supabase } from '../lib/supabase';
+import { PaywallModal } from './PaywallModal';
 
 export function MagicInput() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [text, setText] = useState('');
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -33,9 +35,14 @@ export function MagicInput() {
         setText('');
         queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
-        setTimeout(() => document.getElementById(`task-${newTask.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
       },
-      onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+      onError: (err: any) => {
+        if (err.status === 403 || err.message?.includes("LIMIT_REACHED")) {
+          setShowPaywall(true);
+        } else {
+          toast({ title: "Error", description: err.message, variant: "destructive" });
+        }
+      }
     });
   };
 
@@ -96,7 +103,13 @@ export function MagicInput() {
               if (publicUrl) addAttachment.mutate({ id: newTask.id, data: { fileName: 'Nota de voz', fileUrl: publicUrl, fileType: 'audio/webm' } });
               queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
             },
-            onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+            onError: (err: any) => {
+              if (err.status === 403 || err.message?.includes("LIMIT_REACHED")) {
+                setShowPaywall(true);
+              } else {
+                toast({ title: "Error", description: err.message, variant: "destructive" });
+              }
+            }
           });
         };
       } catch (error) {
@@ -217,6 +230,8 @@ export function MagicInput() {
           </motion.form>
         )}
       </AnimatePresence>
+
+      <PaywallModal isOpen={showPaywall} onClose={() => setShowPaywall(false)} />
     </div>
   );
 }
