@@ -215,3 +215,24 @@ export const TranscribeAudioBody = zod.object({
   "audioBase64": zod.string(),
   "mimeType": zod.string()
 })
+
+
+export const GetPreferencesResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "idioma": zod.string(),
+  "inicioSemana": zod.string()
+})
+
+
+export const UpdatePreferencesBody = zod.object({
+  "idioma": zod.string().optional(),
+  "inicioSemana": zod.string().optional()
+})
+
+export const UpdatePreferencesResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "idioma": zod.string(),
+  "inicioSemana": zod.string()
+})

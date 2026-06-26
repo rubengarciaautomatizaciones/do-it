@@ -161,6 +161,18 @@ export interface TranscribeInput {
   mimeType: string;
 }
 
+export interface UserPreference {
+  id: string;
+  userId: string;
+  idioma: string;
+  inicioSemana: string;
+}
+
+export interface UserPreferenceUpdate {
+  idioma?: string;
+  inicioSemana?: string;
+}
+
 export type GetTasksParams = {
 completed?: boolean;
 };
