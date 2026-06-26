@@ -17,6 +17,7 @@ export const tasksTable = pgTable("tasks", {
   notificaciones: jsonb("notificaciones").$type<string[]>().default([]), 
   completada: boolean("completada").notNull().default(false),
   googleEventId: text("google_event_id"), // <-- NUEVO
+  qstashMessageId: text("qstash_message_id"), // <-- NUEVO
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(), 
 });

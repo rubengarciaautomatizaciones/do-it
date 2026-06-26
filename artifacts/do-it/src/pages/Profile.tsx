@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { LogOut, User, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2, Calendar as CalendarIcon } from 'lucide-react';
@@ -8,6 +8,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from '../lib/supabase';
 import { useToast } from '../hooks/use-toast';
+
+// Helper para convertir la llave VAPID de Base64 a Uint8Array (necesario para las notificaciones)
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 function ProfileSection({ title, children }: { title: string, children: React.ReactNode }) {
   return (
@@ -72,12 +84,25 @@ export default function Profile() {
   const [supportMessage, setSupportMessage] = useState('');
   const [isSendingSupport, setIsSendingSupport] = useState(false);
 
+  // Estado para Notificaciones Push
+  const [pushStatus, setPushStatus] = useState<string>('Comprobando...');
+
+  // Comprobar estado de notificaciones al cargar
+  useEffect(() => {
+    if (!('Notification' in window)) {
+      setPushStatus('No soportado');
+      return;
+    }
+    if (Notification.permission === 'granted') setPushStatus('Activado');
+    else if (Notification.permission === 'denied') setPushStatus('Bloqueado');
+    else setPushStatus('Desactivado');
+  }, []);
+
   // Capturar el resultado de Google Calendar al volver
-  React.useEffect(() => {
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('calendar') === 'success') {
       toast({ title: "¡Conectado!", description: "Google Calendar sincronizado correctamente." });
-      // Limpiamos la URL para que no se quede el ?calendar=success
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (params.get('calendar') === 'error') {
       toast({ title: "Error", description: "No se pudo conectar con Google Calendar.", variant: "destructive" });
@@ -153,6 +178,38 @@ export default function Profile() {
     }
   };
 
+  const handleEnablePush = async () => {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      return toast({ title: "Error", description: "Tu dispositivo no soporta notificaciones Push.", variant: "destructive" });
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      setPushStatus('Bloqueado');
+      return toast({ title: "Permiso denegado", description: "Debes permitir las notificaciones en los ajustes de tu móvil.", variant: "destructive" });
+    }
+
+    try {
+      toast({ title: "Activando...", description: "Conectando con el servidor." });
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY)
+      });
+
+      await fetch('/api/notifications/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': user!.id },
+        body: JSON.stringify({ userId: user!.id, subscription })
+      });
+
+      setPushStatus('Activado');
+      toast({ title: "¡Listo!", description: "Recibirás notificaciones de tus tareas." });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] bg-white pb-32">
       <div className="px-6 pt-12 pb-6 max-w-2xl mx-auto">
@@ -203,6 +260,15 @@ export default function Profile() {
               />
             </>
           )}
+        </ProfileSection>
+
+        <ProfileSection title="Notificaciones">
+          <ProfileItem 
+            icon={Bell} 
+            label="Notificaciones Push" 
+            value={pushStatus} 
+            onClick={pushStatus !== 'Activado' ? handleEnablePush : undefined} 
+          />
         </ProfileSection>
 
         <ProfileSection title="Soporte">

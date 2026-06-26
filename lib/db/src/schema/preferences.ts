@@ -21,3 +21,12 @@ export const userPreferencesTable = pgTable("user_preferences", {
 export const insertUserPreferenceSchema = createInsertSchema(userPreferencesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertUserPreference = z.infer<typeof insertUserPreferenceSchema>;
 export type UserPreference = typeof userPreferencesTable.$inferSelect;
+
+export const pushSubscriptionsTable = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: uuid("user_id").notNull(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

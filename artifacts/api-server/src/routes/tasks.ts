@@ -13,6 +13,7 @@ import {
   AddTaskAttachmentBody
 } from "@workspace/api-zod";
 import { syncTaskToGoogle, deleteTaskFromGoogle } from "../lib/google-calendar";
+import { scheduleNotification, cancelNotification } from "../lib/qstash";
 
 const router = Router();
 
@@ -81,8 +82,11 @@ router.post("/tasks", async (req, res) => {
     notificaciones: notificaciones ?? []
   }).returning();
 
-  // AWAIT RESTAURADO: Garantiza que Google devuelva el ID antes de que el usuario pueda interactuar
+  // Sincronizar con Google Calendar
   await syncTaskToGoogle(task, userId);
+
+  // Programar notificación en QStash (Fire-and-forget)
+  scheduleNotification(task).catch(err => req.log.error({ err }, "Error scheduling notification"));
 
   return res.status(201).json({ ...mapTask(task), attachments: [] });
 });
@@ -165,8 +169,11 @@ router.post("/tasks/magic-text", async (req, res) => {
     userId, titulo: extractedTask.titulo, descripcion: text, fechaVencimiento: extractedTask.fecha_vencimiento ?? null, horaVencimiento: extractedTask.hora_vencimiento ?? null, proyecto: null,
   }).returning();
 
-  // AWAIT RESTAURADO
+  // Sincronizar con Google Calendar
   await syncTaskToGoogle(task, userId);
+
+  // Programar notificación en QStash (Fire-and-forget)
+  scheduleNotification(task).catch(err => req.log.error({ err }, "Error scheduling notification"));
 
   return res.status(201).json({ ...task, attachments: [] });
 });
@@ -196,8 +203,11 @@ router.patch("/tasks/:id", async (req, res) => {
 
   if (!task) return res.status(404).json({ error: "Task not found" });
 
-  // AWAIT RESTAURADO
+  // Sincronizar con Google Calendar
   await syncTaskToGoogle(task, task.userId);
+
+  // Reprogramar notificación en QStash si cambiaron las fechas (Fire-and-forget)
+  scheduleNotification(task).catch(err => req.log.error({ err }, "Error scheduling notification"));
 
   return res.json(mapTask(task));
 });
@@ -210,9 +220,14 @@ router.delete("/tasks/:id", async (req, res) => {
 
   if (task) {
     await db.delete(tasksTable).where(eq(tasksTable.id, parsed.data.id));
+
     if (task.googleEventId) {
-      // AWAIT RESTAURADO
       await deleteTaskFromGoogle(task.googleEventId, task.userId);
+    }
+
+    // Cancelar notificación en QStash si existía
+    if (task.qstashMessageId) {
+      cancelNotification(task.qstashMessageId).catch(err => req.log.error({ err }, "Error canceling notification"));
     }
   }
 

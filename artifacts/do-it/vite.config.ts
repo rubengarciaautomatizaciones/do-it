@@ -20,7 +20,8 @@ export default defineConfig({
       includeAssets: ['icono.png'],
       workbox: {
         // ESTO ES LA MAGIA: Le dice a la PWA que no intercepte las rutas del backend
-        navigateFallbackDenylist: [/^\/api/] 
+        navigateFallbackDenylist: [/^\/api/],
+        importScripts: ['/push-sw.js'] // <-- NUEVO: Inyecta nuestro código de notificaciones
       },
       manifest: {
         name: 'do it!',
