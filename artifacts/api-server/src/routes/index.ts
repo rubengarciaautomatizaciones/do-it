@@ -4,8 +4,8 @@ import tasksRouter from "./tasks";
 import habitsRouter from "./habits";
 import transcribeRouter from "./transcribe";
 import preferencesRouter from "./preferences";
-import calendarRouter from "./calendar"; // Añade arriba
-
+import calendarRouter from "./calendar";
+import stripeRouter from "./stripe"; // <-- ESTE ES EL IMPORT QUE FALTABA
 
 const router: IRouter = Router();
 
