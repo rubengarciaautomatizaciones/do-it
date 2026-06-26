@@ -1,13 +1,15 @@
-// artifacts/do-it/src/pages/Calendar.tsx
 import React, { useState, useMemo } from 'react';
-import { useGetTasks } from '@workspace/api-client-react';
+import { useGetTasks, useGetPreferences } from '@workspace/api-client-react';
 import { BottomTabBar } from '../components/BottomTabBar';
+import { useAuth } from '../contexts/AuthContext';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
 
 export default function Calendar() {
+  const { user } = useAuth();
   const { data: tasks } = useGetTasks();
+  const { data: prefs } = useGetPreferences();
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const daysInMonth = useMemo(() => {
@@ -28,13 +30,29 @@ export default function Calendar() {
     return map;
   }, [tasks]);
 
+  const handleGoogleConnect = async () => {
+    if (!user) return;
+    // Si ya está conectado, no hacemos nada (se desconecta desde el Perfil)
+    if (prefs?.googleRefreshToken) return;
+
+    const res = await fetch(`/api/calendar/connect?userId=${user.id}`).then(r => r.json());
+    if (res.url) window.location.href = res.url;
+  };
+
   return (
     <div className="min-h-[100dvh] bg-white pb-32 flex flex-col">
       <div className="px-6 pt-12 pb-4 flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight text-[#111111]">Calendario</h1>
-        <button className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-black transition-colors bg-gray-50 px-3 py-1.5 rounded-full">
-          <CalendarIcon className="w-4 h-4" /> Conectar Google
-        </button>
+
+        {prefs?.googleRefreshToken ? (
+          <div className="flex items-center gap-2 text-sm font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
+            <CheckCircle2 className="w-4 h-4" /> Conectado
+          </div>
+        ) : (
+          <button onClick={handleGoogleConnect} className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-black transition-colors bg-gray-50 px-3 py-1.5 rounded-full">
+            <CalendarIcon className="w-4 h-4" /> Conectar Google
+          </button>
+        )}
       </div>
 
       <div className="px-6 flex items-center justify-between mb-6">

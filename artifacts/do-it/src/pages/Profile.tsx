@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BottomTabBar } from '../components/BottomTabBar';
-import { LogOut, User, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2 } from 'lucide-react';
+import { LogOut, User, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { useGetPreferences, useUpdatePreferences, useCreatePortal, getGetPreferencesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,6 +73,19 @@ export default function Profile() {
     });
   };
 
+  const handleGoogleConnect = async () => {
+    if (!user) return;
+    if (prefs?.googleRefreshToken) {
+      // Desconectar
+      await fetch(`/api/calendar/disconnect`, { method: 'POST', headers: { 'x-user-id': user.id } });
+      queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() });
+    } else {
+      // Conectar
+      const res = await fetch(`/api/calendar/connect?userId=${user.id}`).then(r => r.json());
+      if (res.url) window.location.href = res.url;
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] bg-white pb-32">
       <div className="px-6 pt-12 pb-6 max-w-2xl mx-auto">
@@ -117,6 +130,12 @@ export default function Profile() {
                 icon={Settings} label="Inicio de semana" value={prefs.inicioSemana} 
                 onChange={(val) => handlePrefChange('inicioSemana', val)}
                 options={[{label: 'Lunes', value: 'lunes'}, {label: 'Domingo', value: 'domingo'}]} 
+              />
+              <ProfileItem 
+                icon={CalendarIcon} 
+                label="Google Calendar" 
+                value={prefs.googleRefreshToken ? "Conectado" : "Desconectado"} 
+                onClick={handleGoogleConnect} 
               />
             </>
           )}

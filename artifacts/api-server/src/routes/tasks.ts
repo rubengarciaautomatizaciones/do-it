@@ -12,6 +12,7 @@ import {
   CreateMagicTextTaskBody,
   AddTaskAttachmentBody
 } from "@workspace/api-zod";
+import { syncTaskToGoogle, deleteTaskFromGoogle } from "../lib/google-calendar";
 
 const router = Router();
 
@@ -80,6 +81,7 @@ router.post("/tasks", async (req, res) => {
     notificaciones: notificaciones ?? []
   }).returning();
 
+  await syncTaskToGoogle(task, userId);
   return res.status(201).json({ ...mapTask(task), attachments: [] });
 });
 
@@ -107,12 +109,26 @@ router.post("/tasks/magic-text", async (req, res) => {
 
   const { text, userId } = parsed.data;
 
-  // 1. COMPROBAR LÍMITES DE IA
+  // 1. COMPROBAR LÍMITES Y RESETEO MENSUAL
   let [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
   if (!prefs) {
     [prefs] = await db.insert(userPreferencesTable).values({ userId }).returning();
   }
-  if (!prefs.isPremium && prefs.aiUsageCount >= 3) {
+
+  const now = new Date();
+  const resetDate = new Date(prefs.aiUsageResetDate);
+  const nextReset = new Date(resetDate);
+  nextReset.setMonth(nextReset.getMonth() + 1);
+
+  let currentUsage = prefs.aiUsageCount;
+  let newResetDate = prefs.aiUsageResetDate;
+
+  if (now >= nextReset) {
+    currentUsage = 0;
+    newResetDate = now;
+  }
+
+  if (!prefs.isPremium && currentUsage >= 3) {
     return res.status(403).json({ error: "LIMIT_REACHED", message: "Has alcanzado el límite de 3 usos gratuitos." });
   }
 
@@ -136,8 +152,11 @@ router.post("/tasks/magic-text", async (req, res) => {
     extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
     extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
 
-    // 2. INCREMENTAR CONTADOR SI FUE EXITOSO
-    await db.update(userPreferencesTable).set({ aiUsageCount: prefs.aiUsageCount + 1 }).where(eq(userPreferencesTable.userId, userId));
+    // 2. ACTUALIZAR CONTADOR Y FECHA DE RESETEO
+    await db.update(userPreferencesTable).set({ 
+      aiUsageCount: currentUsage + 1,
+      aiUsageResetDate: newResetDate
+    }).where(eq(userPreferencesTable.userId, userId));
   } catch (err) {
     req.log.error({ err }, "Gemini text extraction failed");
   }
@@ -146,6 +165,7 @@ router.post("/tasks/magic-text", async (req, res) => {
     userId, titulo: extractedTask.titulo, descripcion: text, fechaVencimiento: extractedTask.fecha_vencimiento ?? null, horaVencimiento: extractedTask.hora_vencimiento ?? null, proyecto: null,
   }).returning();
 
+  await syncTaskToGoogle(task, userId);
   return res.status(201).json({ ...task, attachments: [] });
 });
 
@@ -173,13 +193,24 @@ router.patch("/tasks/:id", async (req, res) => {
   }).where(eq(tasksTable.id, id)).returning();
 
   if (!task) return res.status(404).json({ error: "Task not found" });
+  await syncTaskToGoogle(task, task.userId);
   return res.json(mapTask(task));
 });
 
 router.delete("/tasks/:id", async (req, res) => {
   const parsed = DeleteTaskParams.safeParse(req.params);
   if (!parsed.success) return res.status(400).json({ error: "Invalid id" });
-  await db.delete(tasksTable).where(eq(tasksTable.id, parsed.data.id));
+
+  // Obtener la tarea antes de borrarla para saber su googleEventId
+  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, parsed.data.id));
+
+  if (task) {
+    await db.delete(tasksTable).where(eq(tasksTable.id, parsed.data.id));
+    if (task.googleEventId) {
+      await deleteTaskFromGoogle(task.googleEventId, task.userId);
+    }
+  }
+
   return res.status(204).send();
 });
 

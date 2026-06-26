@@ -11,11 +11,12 @@ export const tasksTable = pgTable("tasks", {
   horaVencimiento: text("hora_vencimiento"), 
   fechaNotificacion: text("fecha_notificacion"), 
   horaNotificacion: text("hora_notificacion"), 
-  proyecto: text("proyecto"), // ELIMINADO EL DEFAULT "General"
+  proyecto: text("proyecto"),
   orden: integer("orden").default(0), 
   links: jsonb("links").$type<string[]>().default([]), 
   notificaciones: jsonb("notificaciones").$type<string[]>().default([]), 
   completada: boolean("completada").notNull().default(false),
+  googleEventId: text("google_event_id"), // <-- NUEVO
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(), 
 });

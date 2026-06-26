@@ -12,12 +12,27 @@ router.post("/transcribe", async (req, res) => {
 
   const { userId, audioBase64, mimeType } = parsed.data;
 
-  // 1. COMPROBAR LÍMITES DE IA
+  // 1. COMPROBAR LÍMITES Y RESETEO MENSUAL
   let [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
   if (!prefs) {
     [prefs] = await db.insert(userPreferencesTable).values({ userId }).returning();
   }
-  if (!prefs.isPremium && prefs.aiUsageCount >= 3) {
+
+  const now = new Date();
+  const resetDate = new Date(prefs.aiUsageResetDate);
+  const nextReset = new Date(resetDate);
+  nextReset.setMonth(nextReset.getMonth() + 1); // Sumamos 1 mes
+
+  let currentUsage = prefs.aiUsageCount;
+  let newResetDate = prefs.aiUsageResetDate;
+
+  // Si ya ha pasado un mes, reseteamos el contador
+  if (now >= nextReset) {
+    currentUsage = 0;
+    newResetDate = now;
+  }
+
+  if (!prefs.isPremium && currentUsage >= 3) {
     return res.status(403).json({ error: "LIMIT_REACHED", message: "Has alcanzado el límite de 3 usos gratuitos." });
   }
 
@@ -37,8 +52,11 @@ router.post("/transcribe", async (req, res) => {
     const cleaned = (response.candidates?.[0]?.content?.parts?.[0]?.text ?? "").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     extractedTask = JSON.parse(cleaned);
 
-    // 2. INCREMENTAR CONTADOR SI FUE EXITOSO
-    await db.update(userPreferencesTable).set({ aiUsageCount: prefs.aiUsageCount + 1 }).where(eq(userPreferencesTable.userId, userId));
+    // 2. ACTUALIZAR CONTADOR Y FECHA DE RESETEO
+    await db.update(userPreferencesTable).set({ 
+      aiUsageCount: currentUsage + 1,
+      aiUsageResetDate: newResetDate
+    }).where(eq(userPreferencesTable.userId, userId));
   } catch (err) {
     req.log.error({ err }, "Gemini transcription failed");
   }
