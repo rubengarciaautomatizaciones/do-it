@@ -1,19 +1,37 @@
-import { pgTable, text, timestamp, uuid, boolean, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { Router } from "express";
+import { eq } from "drizzle-orm";
+import { db, userPreferencesTable } from "@workspace/db";
+import { UpdatePreferencesBody } from "@workspace/api-zod";
 
-export const userPreferencesTable = pgTable("user_preferences", {
-  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: uuid("user_id").notNull().unique(),
-  idioma: text("idioma").notNull().default("es"),
-  inicioSemana: text("inicio_semana").notNull().default("lunes"),
-  isPremium: boolean("is_premium").notNull().default(false),
-  aiUsageCount: integer("ai_usage_count").notNull().default(0),
-  stripeCustomerId: text("stripe_customer_id"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+const router = Router();
+
+router.get("/preferences", async (req, res) => {
+  const userId = req.query.userId as string;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  let [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
+
+  // Si no existen, las creamos por defecto
+  if (!prefs) {
+    [prefs] = await db.insert(userPreferencesTable).values({ userId }).returning();
+  }
+
+  return res.json(prefs);
 });
 
-export const insertUserPreferenceSchema = createInsertSchema(userPreferencesTable).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertUserPreference = z.infer<typeof insertUserPreferenceSchema>;
-export type UserPreference = typeof userPreferencesTable.$inferSelect;
+router.patch("/preferences", async (req, res) => {
+  const userId = req.query.userId as string;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  const parsed = UpdatePreferencesBody.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
+
+  const [prefs] = await db.update(userPreferencesTable)
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(eq(userPreferencesTable.userId, userId))
+    .returning();
+
+  return res.json(prefs);
+});
+
+export default router;
