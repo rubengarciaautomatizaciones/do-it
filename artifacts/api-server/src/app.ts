@@ -3,6 +3,8 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import stripeRouter from "./routes/stripe";
+
 
 const app: Express = express();
 
@@ -16,6 +18,9 @@ app.use(pinoHttp({
 }));
 
 app.use(cors());
+
+app.use("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeRouter);
+
 
 // AUMENTO DE LÍMITES A 50MB (Evita crashes con los audios)
 app.use(express.json({ limit: "50mb" }));

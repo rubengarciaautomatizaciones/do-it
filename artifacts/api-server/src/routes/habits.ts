@@ -3,6 +3,7 @@ import { Router } from "express";
 import { eq, and, gte } from "drizzle-orm";
 import { db, habitsTable, habitLogsTable } from "@workspace/db";
 import { CreateHabitBody, DeleteHabitParams, LogHabitParams, UnlogHabitParams } from "@workspace/api-zod";
+import { userPreferencesTable } from "@workspace/db";
 
 const router = Router();
 
@@ -45,6 +46,14 @@ router.post("/habits", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
 
   const { nombre, userId, frecuencia, targetDays } = parsed.data;
+  // COMPROBAR LÍMITE DE HÁBITOS
+  let [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
+  if (!prefs?.isPremium) {
+    const userHabits = await db.select().from(habitsTable).where(eq(habitsTable.userId, userId));
+    if (userHabits.length >= 5) {
+      return res.status(403).json({ error: "LIMIT_REACHED", message: "Límite de 5 hábitos alcanzado en el plan Free." });
+    }
+  }
   const [habit] = await db.insert(habitsTable).values({ 
     nombre, userId, 
     frecuencia: frecuencia ?? "daily",

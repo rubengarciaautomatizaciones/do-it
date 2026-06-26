@@ -189,3 +189,20 @@ export type UnlogHabitParams = {
 date?: string;
 };
 
+export type CreateCheckoutBody = {
+  priceId: string;
+  userId: string;
+};
+
+export type CreateCheckout200 = {
+  url?: string;
+};
+
+export type CreatePortalBody = {
+  userId: string;
+};
+
+export type CreatePortal200 = {
+  url?: string;
+};
+

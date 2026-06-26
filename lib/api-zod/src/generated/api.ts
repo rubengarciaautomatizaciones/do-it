@@ -236,3 +236,22 @@ export const UpdatePreferencesResponse = zod.object({
   "idioma": zod.string(),
   "inicioSemana": zod.string()
 })
+
+
+export const CreateCheckoutBody = zod.object({
+  "priceId": zod.string(),
+  "userId": zod.string()
+})
+
+export const CreateCheckoutResponse = zod.object({
+  "url": zod.string().optional()
+})
+
+
+export const CreatePortalBody = zod.object({
+  "userId": zod.string()
+})
+
+export const CreatePortalResponse = zod.object({
+  "url": zod.string().optional()
+})

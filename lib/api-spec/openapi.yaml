@@ -11,6 +11,7 @@ tags:
   - name: habits
   - name: transcribe
   - name: preferences
+  - name: stripe
 paths:
   /healthz:
     get:
@@ -316,6 +317,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserPreference"
+
+  /stripe/checkout:
+    post:
+      operationId: createCheckout
+      tags: [stripe]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [priceId, userId]
+              properties:
+                priceId: { type: string }
+                userId: { type: string }
+      responses:
+        "200":
+          description: Checkout URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+
+  /stripe/portal:
+    post:
+      operationId: createPortal
+      tags: [stripe]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string }
+      responses:
+        "200":
+          description: Portal URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
 
 components:
   schemas:

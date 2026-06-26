@@ -206,6 +206,11 @@ function TaskDetails({ task, onClose }: { task: Task, onClose?: () => void }) {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    const prefs = queryClient.getQueryData<any>(getGetPreferencesQueryKey());
+    if (!prefs?.isPremium && file.size > 5 * 1024 * 1024) {
+      toast({ title: "Archivo demasiado grande", description: "El plan Free permite máximo 5MB por archivo.", variant: "destructive" });
+      return;
+    }
     toast({ title: "Subiendo archivo..." });
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;

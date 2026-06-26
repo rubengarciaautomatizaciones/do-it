@@ -21,6 +21,10 @@ import type {
 
 import type {
   AddTaskAttachmentBody,
+  CreateCheckout200,
+  CreateCheckoutBody,
+  CreatePortal200,
+  CreatePortalBody,
   GetTaskMetadataParams,
   GetTasksParams,
   Habit,
@@ -1295,5 +1299,135 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getUpdatePreferencesMutationOptions(options));
+    }
+
+export const getCreateCheckoutUrl = () => {
+
+
+
+
+  return `/api/stripe/checkout`
+}
+
+export const createCheckout = async (createCheckoutBody: CreateCheckoutBody, options?: RequestInit): Promise<CreateCheckout200> => {
+
+  return customFetch<CreateCheckout200>(getCreateCheckoutUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createCheckoutBody,)
+  }
+);}
+
+
+
+
+export const getCreateCheckoutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCheckout>>, TError,{data: BodyType<CreateCheckoutBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCheckout>>, TError,{data: BodyType<CreateCheckoutBody>}, TContext> => {
+
+const mutationKey = ['createCheckout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCheckout>>, {data: BodyType<CreateCheckoutBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCheckout(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createCheckout>>>
+    export type CreateCheckoutMutationBody = BodyType<CreateCheckoutBody>
+    export type CreateCheckoutMutationError = ErrorType<unknown>
+
+    export const useCreateCheckout = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCheckout>>, TError,{data: BodyType<CreateCheckoutBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCheckout>>,
+        TError,
+        {data: BodyType<CreateCheckoutBody>},
+        TContext
+      > => {
+      return useMutation(getCreateCheckoutMutationOptions(options));
+    }
+
+export const getCreatePortalUrl = () => {
+
+
+
+
+  return `/api/stripe/portal`
+}
+
+export const createPortal = async (createPortalBody: CreatePortalBody, options?: RequestInit): Promise<CreatePortal200> => {
+
+  return customFetch<CreatePortal200>(getCreatePortalUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createPortalBody,)
+  }
+);}
+
+
+
+
+export const getCreatePortalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPortal>>, TError,{data: BodyType<CreatePortalBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPortal>>, TError,{data: BodyType<CreatePortalBody>}, TContext> => {
+
+const mutationKey = ['createPortal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPortal>>, {data: BodyType<CreatePortalBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPortal(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePortalMutationResult = NonNullable<Awaited<ReturnType<typeof createPortal>>>
+    export type CreatePortalMutationBody = BodyType<CreatePortalBody>
+    export type CreatePortalMutationError = ErrorType<unknown>
+
+    export const useCreatePortal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPortal>>, TError,{data: BodyType<CreatePortalBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPortal>>,
+        TError,
+        {data: BodyType<CreatePortalBody>},
+        TContext
+      > => {
+      return useMutation(getCreatePortalMutationOptions(options));
     }
 

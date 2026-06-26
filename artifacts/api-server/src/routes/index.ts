@@ -12,5 +12,6 @@ router.use(tasksRouter);
 router.use(habitsRouter);
 router.use(transcribeRouter);
 router.use(preferencesRouter);
+router.use(stripeRouter);
 
 export default router;

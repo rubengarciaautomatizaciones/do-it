@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { LogOut, User, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2 } from 'lucide-react';
-import { useGetPreferences, useUpdatePreferences, getGetPreferencesQueryKey } from '@workspace/api-client-react';
+import { useGetPreferences, useUpdatePreferences, useCreatePortal, getGetPreferencesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -56,10 +56,20 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const { data: prefs, isLoading } = useGetPreferences();
   const updatePrefs = useUpdatePreferences();
+  const createPortal = useCreatePortal();
 
   const handlePrefChange = (key: 'idioma' | 'inicioSemana', value: string) => {
     updatePrefs.mutate({ data: { [key]: value } }, {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() })
+    });
+  };
+
+  const handleManageSubscription = () => {
+    if (!user) return;
+    createPortal.mutate({ data: { userId: user.id } }, {
+      onSuccess: (res) => { 
+        if (res.url) window.location.href = res.url; 
+      }
     });
   };
 
@@ -74,9 +84,23 @@ export default function Profile() {
         </ProfileSection>
 
         <ProfileSection title="Suscripción">
-          <ProfileItem icon={CreditCard} label="Estado del plan" value="Gratis" />
-          <ProfileItem icon={CreditCard} label="Gestionar suscripción" />
-          <ProfileItem icon={CreditCard} label="Restaurar compra" />
+          {isLoading ? (
+            <div className="p-4 flex justify-center bg-white"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
+          ) : (
+            <>
+              <ProfileItem icon={CreditCard} label="Estado del plan" value={prefs?.isPremium ? "Premium" : "Gratis"} />
+              {prefs?.isPremium && (
+                <ProfileItem 
+                  icon={CreditCard} 
+                  label={createPortal.isPending ? "Cargando portal..." : "Gestionar suscripción"} 
+                  onClick={handleManageSubscription} 
+                />
+              )}
+              {!prefs?.isPremium && (
+                <ProfileItem icon={CreditCard} label="Restaurar compra" />
+              )}
+            </>
+          )}
         </ProfileSection>
 
         <ProfileSection title="Personalización">
