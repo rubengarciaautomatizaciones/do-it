@@ -72,6 +72,19 @@ export default function Profile() {
   const [supportMessage, setSupportMessage] = useState('');
   const [isSendingSupport, setIsSendingSupport] = useState(false);
 
+  // Capturar el resultado de Google Calendar al volver
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('calendar') === 'success') {
+      toast({ title: "¡Conectado!", description: "Google Calendar sincronizado correctamente." });
+      // Limpiamos la URL para que no se quede el ?calendar=success
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (params.get('calendar') === 'error') {
+      toast({ title: "Error", description: "No se pudo conectar con Google Calendar.", variant: "destructive" });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
+
   const handlePrefChange = (key: 'idioma' | 'inicioSemana', value: string) => {
     updatePrefs.mutate({ data: { [key]: value } }, {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() })

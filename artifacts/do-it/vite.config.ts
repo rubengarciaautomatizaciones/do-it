@@ -18,6 +18,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icono.png'],
+      workbox: {
+        // ESTO ES LA MAGIA: Le dice a la PWA que no intercepte las rutas del backend
+        navigateFallbackDenylist: [/^\/api/] 
+      },
       manifest: {
         name: 'do it!',
         short_name: 'do it!',
