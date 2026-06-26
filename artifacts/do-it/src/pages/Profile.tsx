@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { LogOut, User, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { useGetPreferences, useUpdatePreferences, useCreatePortal, getGetPreferencesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { supabase } from '../lib/supabase';
+import { useToast } from '../hooks/use-toast';
 
 function ProfileSection({ title, children }: { title: string, children: React.ReactNode }) {
   return (
@@ -53,10 +56,21 @@ function ProfileSelectRow({ icon: Icon, label, value, options, onChange }: { ico
 
 export default function Profile() {
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: prefs, isLoading } = useGetPreferences();
   const updatePrefs = useUpdatePreferences();
   const createPortal = useCreatePortal();
+
+  // Estados para Modales
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [supportSubject, setSupportSubject] = useState('');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [isSendingSupport, setIsSendingSupport] = useState(false);
 
   const handlePrefChange = (key: 'idioma' | 'inicioSemana', value: string) => {
     updatePrefs.mutate({ data: { [key]: value } }, {
@@ -76,13 +90,53 @@ export default function Profile() {
   const handleGoogleConnect = async () => {
     if (!user) return;
     if (prefs?.googleRefreshToken) {
-      // Desconectar
       await fetch(`/api/calendar/disconnect`, { method: 'POST', headers: { 'x-user-id': user.id } });
       queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() });
+      toast({ title: "Desconectado", description: "Google Calendar ha sido desvinculado." });
     } else {
-      // Conectar
       const res = await fetch(`/api/calendar/connect?userId=${user.id}`).then(r => r.json());
       if (res.url) window.location.href = res.url;
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      return toast({ title: "Error", description: "La contraseña debe tener al menos 6 caracteres.", variant: "destructive" });
+    }
+    setIsUpdatingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setIsUpdatingPassword(false);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Éxito", description: "Contraseña actualizada correctamente." });
+      setIsPasswordModalOpen(false);
+      setNewPassword('');
+    }
+  };
+
+  const handleSendSupport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !supportSubject || !supportMessage) return;
+
+    setIsSendingSupport(true);
+    const { error } = await supabase.from('support_tickets').insert({
+      user_id: user.id,
+      email: user.email,
+      motivo: supportSubject,
+      mensaje: supportMessage
+    });
+    setIsSendingSupport(false);
+
+    if (error) {
+      toast({ title: "Error", description: "No se pudo enviar el mensaje.", variant: "destructive" });
+    } else {
+      toast({ title: "Mensaje enviado", description: "Te contactaremos pronto a tu email." });
+      setIsSupportModalOpen(false);
+      setSupportSubject('');
+      setSupportMessage('');
     }
   };
 
@@ -93,7 +147,7 @@ export default function Profile() {
 
         <ProfileSection title="Cuenta">
           <ProfileItem icon={User} label="Email" value={user?.email} />
-          <ProfileItem icon={Settings} label="Cambiar contraseña" />
+          <ProfileItem icon={Settings} label="Cambiar contraseña" onClick={() => setIsPasswordModalOpen(true)} />
         </ProfileSection>
 
         <ProfileSection title="Suscripción">
@@ -108,9 +162,6 @@ export default function Profile() {
                   label={createPortal.isPending ? "Cargando portal..." : "Gestionar suscripción"} 
                   onClick={handleManageSubscription} 
                 />
-              )}
-              {!prefs?.isPremium && (
-                <ProfileItem icon={CreditCard} label="Restaurar compra" />
               )}
             </>
           )}
@@ -141,16 +192,8 @@ export default function Profile() {
           )}
         </ProfileSection>
 
-        <ProfileSection title="Notificaciones">
-          <ProfileItem icon={Bell} label="Recordatorios de tareas" value="Activado" />
-          <ProfileItem icon={Bell} label="Recordatorios de hábitos" value="Activado" />
-          <ProfileItem icon={Bell} label="Resumen semanal" value="Desactivado" />
-        </ProfileSection>
-
         <ProfileSection title="Soporte">
-          <ProfileItem icon={HelpCircle} label="Ayuda / FAQ" />
-          <ProfileItem icon={HelpCircle} label="Contactar soporte" />
-          <ProfileItem icon={HelpCircle} label="Sugerir una mejora" />
+          <ProfileItem icon={HelpCircle} label="Contactar soporte" onClick={() => setIsSupportModalOpen(true)} />
         </ProfileSection>
 
         <div className="mt-12">
@@ -159,6 +202,60 @@ export default function Profile() {
           </button>
         </div>
       </div>
+
+      {/* Modal Cambiar Contraseña */}
+      <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
+        <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Cambiar contraseña</DialogTitle>
+            <DialogDescription>Ingresa tu nueva contraseña (mínimo 6 caracteres).</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdatePassword} className="space-y-4 mt-4">
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nueva contraseña"
+              className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-black"
+            />
+            <button type="submit" disabled={isUpdatingPassword} className="w-full bg-black text-white rounded-xl py-3 font-medium disabled:opacity-50 flex justify-center">
+              {isUpdatingPassword ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Actualizar'}
+            </button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Soporte Técnico */}
+      <Dialog open={isSupportModalOpen} onOpenChange={setIsSupportModalOpen}>
+        <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Contactar Soporte</DialogTitle>
+            <DialogDescription>Cuéntanos tu problema o sugerencia. Te responderemos a {user?.email}.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSendSupport} className="space-y-4 mt-4">
+            <Select value={supportSubject} onValueChange={setSupportSubject}>
+              <SelectTrigger className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 h-auto text-sm focus:ring-1 focus:ring-black">
+                <SelectValue placeholder="Selecciona un motivo..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="bug">Reportar un error</SelectItem>
+                <SelectItem value="billing">Problema con pagos/suscripción</SelectItem>
+                <SelectItem value="feature">Sugerir una mejora</SelectItem>
+                <SelectItem value="other">Otro</SelectItem>
+              </SelectContent>
+            </Select>
+            <textarea
+              value={supportMessage}
+              onChange={(e) => setSupportMessage(e.target.value)}
+              placeholder="Describe los detalles aquí..."
+              className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-black min-h-[120px] resize-none"
+            />
+            <button type="submit" disabled={isSendingSupport || !supportSubject || !supportMessage} className="w-full bg-black text-white rounded-xl py-3 font-medium disabled:opacity-50 flex justify-center">
+              {isSendingSupport ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enviar mensaje'}
+            </button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <BottomTabBar />
     </div>
