@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 
 // Pages
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Tasks from "./pages/Tasks";
 import Habits from "./pages/Habits";
@@ -36,8 +37,9 @@ function ProtectedRoute({ component: Component, ...rest }: { component: any, [ke
 function Router() {
   return (
     <Switch>
+      <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
-      <Route path="/">
+      <Route path="/app">
         {() => <ProtectedRoute component={Tasks} />}
       </Route>
       <Route path="/habits">

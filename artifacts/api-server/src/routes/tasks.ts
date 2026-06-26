@@ -81,8 +81,8 @@ router.post("/tasks", async (req, res) => {
     notificaciones: notificaciones ?? []
   }).returning();
 
-  // Fire-and-forget: Sincronizamos en segundo plano para no bloquear la respuesta UI
-  syncTaskToGoogle(task, userId).catch(err => req.log.error({ err }, "Error syncing to Google Calendar"));
+  // AWAIT RESTAURADO: Garantiza que Google devuelva el ID antes de que el usuario pueda interactuar
+  await syncTaskToGoogle(task, userId);
 
   return res.status(201).json({ ...mapTask(task), attachments: [] });
 });
@@ -111,7 +111,6 @@ router.post("/tasks/magic-text", async (req, res) => {
 
   const { text, userId } = parsed.data;
 
-  // 1. COMPROBAR LÍMITES Y RESETEO MENSUAL
   let [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
   if (!prefs) {
     [prefs] = await db.insert(userPreferencesTable).values({ userId }).returning();
@@ -154,7 +153,6 @@ router.post("/tasks/magic-text", async (req, res) => {
     extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
     extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
 
-    // 2. ACTUALIZAR CONTADOR Y FECHA DE RESETEO
     await db.update(userPreferencesTable).set({ 
       aiUsageCount: currentUsage + 1,
       aiUsageResetDate: newResetDate
@@ -167,8 +165,8 @@ router.post("/tasks/magic-text", async (req, res) => {
     userId, titulo: extractedTask.titulo, descripcion: text, fechaVencimiento: extractedTask.fecha_vencimiento ?? null, horaVencimiento: extractedTask.hora_vencimiento ?? null, proyecto: null,
   }).returning();
 
-  // Fire-and-forget
-  syncTaskToGoogle(task, userId).catch(err => req.log.error({ err }, "Error syncing to Google Calendar"));
+  // AWAIT RESTAURADO
+  await syncTaskToGoogle(task, userId);
 
   return res.status(201).json({ ...task, attachments: [] });
 });
@@ -198,8 +196,8 @@ router.patch("/tasks/:id", async (req, res) => {
 
   if (!task) return res.status(404).json({ error: "Task not found" });
 
-  // Fire-and-forget
-  syncTaskToGoogle(task, task.userId).catch(err => req.log.error({ err }, "Error syncing to Google Calendar"));
+  // AWAIT RESTAURADO
+  await syncTaskToGoogle(task, task.userId);
 
   return res.json(mapTask(task));
 });
@@ -208,14 +206,13 @@ router.delete("/tasks/:id", async (req, res) => {
   const parsed = DeleteTaskParams.safeParse(req.params);
   if (!parsed.success) return res.status(400).json({ error: "Invalid id" });
 
-  // Obtener la tarea antes de borrarla para saber su googleEventId
   const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, parsed.data.id));
 
   if (task) {
     await db.delete(tasksTable).where(eq(tasksTable.id, parsed.data.id));
     if (task.googleEventId) {
-      // Fire-and-forget
-      deleteTaskFromGoogle(task.googleEventId, task.userId).catch(err => req.log.error({ err }, "Error deleting from Google Calendar"));
+      // AWAIT RESTAURADO
+      await deleteTaskFromGoogle(task.googleEventId, task.userId);
     }
   }
 
@@ -247,8 +244,6 @@ router.get("/tasks/metadata", async (req, res) => {
       timeout: 5000,
       fetchOptions: {
         headers: {
-          // Usamos el User-Agent del bot de Facebook/WhatsApp. 
-          // Instagram bloquea navegadores normales sin login, pero permite a sus propios bots leer la imagen.
           'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
         }
       }

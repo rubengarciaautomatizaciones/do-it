@@ -6,7 +6,7 @@ export function BottomTabBar() {
   const [location] = useLocation();
 
   const tabs = [
-    { href: '/', icon: CheckSquare, label: 'Tareas' },
+    { href: '/app', icon: CheckSquare, label: 'Tareas' },
     { href: '/habits', icon: CalendarDays, label: 'Hábitos' },
     { href: '/calendar', icon: CalendarDays, label: 'Calendario' },
     { href: '/profile', icon: User, label: 'Perfil' },
