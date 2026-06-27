@@ -165,13 +165,24 @@ export const GetHabitsResponseItem = zod.object({
   "id": zod.string(),
   "userId": zod.string(),
   "nombre": zod.string(),
-  "frecuencia": zod.string(),
-  "targetDays": zod.array(zod.number()),
-  "archived": zod.boolean(),
+  "descripcion": zod.string().nullish(),
+  "tipoMeta": zod.string(),
+  "metaNumero": zod.number(),
+  "unidad": zod.string().nullish(),
+  "frecuenciaTipo": zod.string(),
+  "frecuenciaValor": zod.array(zod.number()),
+  "recordatorioHora": zod.string().nullish(),
+  "fechaInicio": zod.string(),
+  "fechaFin": zod.string().nullish(),
+  "estado": zod.string(),
+  "qstashMessageId": zod.string().nullish(),
   "currentStreak": zod.number(),
   "bestStreak": zod.number(),
   "createdAt": zod.string(),
-  "logs": zod.array(zod.string())
+  "logs": zod.array(zod.object({
+  "fecha": zod.string(),
+  "valor": zod.number()
+}))
 })
 export const GetHabitsResponse = zod.array(GetHabitsResponseItem)
 
@@ -181,8 +192,15 @@ export const GetHabitsResponse = zod.array(GetHabitsResponseItem)
 
 export const CreateHabitBody = zod.object({
   "nombre": zod.string().min(1),
-  "frecuencia": zod.string().optional(),
-  "targetDays": zod.array(zod.number()).optional(),
+  "descripcion": zod.string().nullish(),
+  "tipoMeta": zod.string().optional(),
+  "metaNumero": zod.number().optional(),
+  "unidad": zod.string().nullish(),
+  "frecuenciaTipo": zod.string().optional(),
+  "frecuenciaValor": zod.array(zod.number()).optional(),
+  "recordatorioHora": zod.string().nullish(),
+  "fechaInicio": zod.string(),
+  "fechaFin": zod.string().nullish(),
   "userId": zod.string()
 })
 
@@ -193,22 +211,40 @@ export const UpdateHabitParams = zod.object({
 
 export const UpdateHabitBody = zod.object({
   "nombre": zod.string().optional(),
-  "frecuencia": zod.string().optional(),
-  "targetDays": zod.array(zod.number()).optional(),
-  "archived": zod.boolean().optional()
+  "descripcion": zod.string().nullish(),
+  "tipoMeta": zod.string().optional(),
+  "metaNumero": zod.number().optional(),
+  "unidad": zod.string().nullish(),
+  "frecuenciaTipo": zod.string().optional(),
+  "frecuenciaValor": zod.array(zod.number()).optional(),
+  "recordatorioHora": zod.string().nullish(),
+  "fechaInicio": zod.string().optional(),
+  "fechaFin": zod.string().nullish(),
+  "estado": zod.string().optional()
 })
 
 export const UpdateHabitResponse = zod.object({
   "id": zod.string(),
   "userId": zod.string(),
   "nombre": zod.string(),
-  "frecuencia": zod.string(),
-  "targetDays": zod.array(zod.number()),
-  "archived": zod.boolean(),
+  "descripcion": zod.string().nullish(),
+  "tipoMeta": zod.string(),
+  "metaNumero": zod.number(),
+  "unidad": zod.string().nullish(),
+  "frecuenciaTipo": zod.string(),
+  "frecuenciaValor": zod.array(zod.number()),
+  "recordatorioHora": zod.string().nullish(),
+  "fechaInicio": zod.string(),
+  "fechaFin": zod.string().nullish(),
+  "estado": zod.string(),
+  "qstashMessageId": zod.string().nullish(),
   "currentStreak": zod.number(),
   "bestStreak": zod.number(),
   "createdAt": zod.string(),
-  "logs": zod.array(zod.string())
+  "logs": zod.array(zod.object({
+  "fecha": zod.string(),
+  "valor": zod.number()
+}))
 })
 
 
@@ -223,6 +259,10 @@ export const LogHabitParams = zod.object({
 
 export const LogHabitQueryParams = zod.object({
   "date": zod.coerce.string().optional()
+})
+
+export const LogHabitBody = zod.object({
+  "valor": zod.number()
 })
 
 

@@ -120,46 +120,104 @@ export interface Habit {
   id: string;
   userId: string;
   nombre: string;
-  frecuencia: string;
-  targetDays: number[];
-  archived: boolean;
+  /** @nullable */
+  descripcion?: string | null;
+  tipoMeta: string;
+  metaNumero: number;
+  /** @nullable */
+  unidad?: string | null;
+  frecuenciaTipo: string;
+  frecuenciaValor: number[];
+  /** @nullable */
+  recordatorioHora?: string | null;
+  fechaInicio: string;
+  /** @nullable */
+  fechaFin?: string | null;
+  estado: string;
+  /** @nullable */
+  qstashMessageId?: string | null;
   currentStreak: number;
   bestStreak: number;
   createdAt: string;
+}
+
+export interface HabitLogItem {
+  fecha: string;
+  valor: number;
 }
 
 export interface HabitWithLogs {
   id: string;
   userId: string;
   nombre: string;
-  frecuencia: string;
-  targetDays: number[];
-  archived: boolean;
+  /** @nullable */
+  descripcion?: string | null;
+  tipoMeta: string;
+  metaNumero: number;
+  /** @nullable */
+  unidad?: string | null;
+  frecuenciaTipo: string;
+  frecuenciaValor: number[];
+  /** @nullable */
+  recordatorioHora?: string | null;
+  fechaInicio: string;
+  /** @nullable */
+  fechaFin?: string | null;
+  estado: string;
+  /** @nullable */
+  qstashMessageId?: string | null;
   currentStreak: number;
   bestStreak: number;
   createdAt: string;
-  logs: string[];
+  logs: HabitLogItem[];
 }
 
 export interface HabitInput {
   /** @minLength 1 */
   nombre: string;
-  frecuencia?: string;
-  targetDays?: number[];
+  /** @nullable */
+  descripcion?: string | null;
+  tipoMeta?: string;
+  metaNumero?: number;
+  /** @nullable */
+  unidad?: string | null;
+  frecuenciaTipo?: string;
+  frecuenciaValor?: number[];
+  /** @nullable */
+  recordatorioHora?: string | null;
+  fechaInicio: string;
+  /** @nullable */
+  fechaFin?: string | null;
   userId: string;
 }
 
 export interface UpdateHabitBody {
   nombre?: string;
-  frecuencia?: string;
-  targetDays?: number[];
-  archived?: boolean;
+  /** @nullable */
+  descripcion?: string | null;
+  tipoMeta?: string;
+  metaNumero?: number;
+  /** @nullable */
+  unidad?: string | null;
+  frecuenciaTipo?: string;
+  frecuenciaValor?: number[];
+  /** @nullable */
+  recordatorioHora?: string | null;
+  fechaInicio?: string;
+  /** @nullable */
+  fechaFin?: string | null;
+  estado?: string;
+}
+
+export interface LogHabitBody {
+  valor: number;
 }
 
 export interface HabitLog {
   id: string;
   habitId: string;
   fechaCompletado: string;
+  valor: number;
 }
 
 export interface TranscribeInput {

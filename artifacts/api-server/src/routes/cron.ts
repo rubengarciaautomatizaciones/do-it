@@ -19,7 +19,7 @@ router.get("/cron/habits", async (req, res) => {
     const dayOfWeek = yesterday.getDay(); // 0 = Dom, 1 = Lun...
 
     // 3. Obtener todos los hábitos y los logs de ayer
-    const allHabits = await db.select().from(habitsTable).where(eq(habitsTable.archived, false));
+    const allHabits = await db.select().from(habitsTable).where(eq(habitsTable.estado, "activo"));
     const yesterdayLogs = await db.select().from(habitLogsTable).where(eq(habitLogsTable.fechaCompletado, yesterdayStr));
     const loggedHabitIds = new Set(yesterdayLogs.map(l => l.habitId));
 
