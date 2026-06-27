@@ -8,6 +8,8 @@ import calendarRouter from "./calendar";
 import stripeRouter from "./stripe"; // <-- ESTE ES EL IMPORT QUE FALTABA
 import cronRouter from "./cron";
 import notificationsRouter from "./notifications"; // <-- AÑADIR ESTO
+import accountRouter from "./account"; // <-- AÑADIR
+
 
 
 const router: IRouter = Router();
@@ -21,5 +23,6 @@ router.use(stripeRouter);
 router.use(calendarRouter);
 router.use(cronRouter); 
 router.use(notificationsRouter);
+router.use(accountRouter);
 
 export default router;

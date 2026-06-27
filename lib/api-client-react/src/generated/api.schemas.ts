@@ -149,6 +149,13 @@ export interface HabitInput {
   userId: string;
 }
 
+export interface UpdateHabitBody {
+  nombre?: string;
+  frecuencia?: string;
+  targetDays?: number[];
+  archived?: boolean;
+}
+
 export interface HabitLog {
   id: string;
   habitId: string;
@@ -206,5 +213,9 @@ export type CreatePortalBody = {
 
 export type CreatePortal200 = {
   url?: string;
+};
+
+export type DeleteAccountParams = {
+userId: string;
 };
 

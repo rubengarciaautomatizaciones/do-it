@@ -25,6 +25,7 @@ import type {
   CreateCheckoutBody,
   CreatePortal200,
   CreatePortalBody,
+  DeleteAccountParams,
   GetTaskMetadataParams,
   GetTasksParams,
   Habit,
@@ -41,6 +42,7 @@ import type {
   TaskUpdate,
   TranscribeInput,
   UnlogHabitParams,
+  UpdateHabitBody,
   UrlMetadata,
   UserPreference,
   UserPreferenceUpdate
@@ -890,6 +892,72 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateHabitMutationOptions(options));
     }
 
+export const getUpdateHabitUrl = (id: string,) => {
+
+
+
+
+  return `/api/habits/${id}`
+}
+
+export const updateHabit = async (id: string,
+    updateHabitBody: UpdateHabitBody, options?: RequestInit): Promise<HabitWithLogs> => {
+
+  return customFetch<HabitWithLogs>(getUpdateHabitUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateHabitBody,)
+  }
+);}
+
+
+
+
+export const getUpdateHabitMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHabit>>, TError,{id: string;data: BodyType<UpdateHabitBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateHabit>>, TError,{id: string;data: BodyType<UpdateHabitBody>}, TContext> => {
+
+const mutationKey = ['updateHabit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateHabit>>, {id: string;data: BodyType<UpdateHabitBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateHabit(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateHabitMutationResult = NonNullable<Awaited<ReturnType<typeof updateHabit>>>
+    export type UpdateHabitMutationBody = BodyType<UpdateHabitBody>
+    export type UpdateHabitMutationError = ErrorType<unknown>
+
+    export const useUpdateHabit = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHabit>>, TError,{id: string;data: BodyType<UpdateHabitBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateHabit>>,
+        TError,
+        {id: string;data: BodyType<UpdateHabitBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateHabitMutationOptions(options));
+    }
+
 export const getDeleteHabitUrl = (id: string,) => {
 
 
@@ -1429,5 +1497,76 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreatePortalMutationOptions(options));
+    }
+
+export const getDeleteAccountUrl = (params: DeleteAccountParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/account?${stringifiedParams}` : `/api/account`
+}
+
+export const deleteAccount = async (params: DeleteAccountParams, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteAccountUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,{params: DeleteAccountParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,{params: DeleteAccountParams}, TContext> => {
+
+const mutationKey = ['deleteAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccount>>, {params: DeleteAccountParams}> = (props) => {
+          const {params} = props ?? {};
+
+          return  deleteAccount(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>
+
+    export type DeleteAccountMutationError = ErrorType<unknown>
+
+    export const useDeleteAccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,{params: DeleteAccountParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAccount>>,
+        TError,
+        {params: DeleteAccountParams},
+        TContext
+      > => {
+      return useMutation(getDeleteAccountMutationOptions(options));
     }
 

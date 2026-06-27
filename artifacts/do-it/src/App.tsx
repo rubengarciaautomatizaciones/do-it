@@ -1,5 +1,8 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import { get, set, del } from 'idb-keyval';
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -14,9 +17,24 @@ import Habits from "./pages/Habits";
 import Calendar from "./pages/Calendar";
 import Profile from "./pages/Profile";
 
-const queryClient = new QueryClient();
+// Configuración de React Query para Modo Offline
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 1000 * 60 * 60 * 24 * 7, // Guarda la caché durante 7 días
+      staleTime: 1000 * 60 * 5, // Considera los datos frescos durante 5 minutos
+    },
+  },
+});
 
-// Protected Route wrapper
+const asyncStoragePersister = createAsyncStoragePersister({
+  storage: {
+    getItem: async (key) => await get(key),
+    setItem: async (key, value) => await set(key, value),
+    removeItem: async (key) => await del(key),
+  },
+});
+
 function ProtectedRoute({ component: Component, ...rest }: { component: any, [key: string]: any }) {
   const { session, loading } = useAuth();
   const [, setLocation] = useLocation();
@@ -27,10 +45,7 @@ function ProtectedRoute({ component: Component, ...rest }: { component: any, [ke
     }
   }, [session, loading, setLocation]);
 
-  if (loading) {
-    return <div className="min-h-screen bg-white flex items-center justify-center" />;
-  }
-
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center" />;
   return session ? <Component {...rest} /> : null;
 }
 
@@ -39,26 +54,18 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
-      <Route path="/tasks">
-        {() => <ProtectedRoute component={Tasks} />}
-      </Route>
-      <Route path="/habits">
-        {() => <ProtectedRoute component={Habits} />}
-      </Route>
-      <Route path="/calendar">
-        {() => <ProtectedRoute component={Calendar} />}
-      </Route>
-      <Route path="/profile">
-        {() => <ProtectedRoute component={Profile} />}
-      </Route>
+      <Route path="/tasks">{() => <ProtectedRoute component={Tasks} />}</Route>
+      <Route path="/habits">{() => <ProtectedRoute component={Habits} />}</Route>
+      <Route path="/calendar">{() => <ProtectedRoute component={Calendar} />}</Route>
+      <Route path="/profile">{() => <ProtectedRoute component={Profile} />}</Route>
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function App() {
+export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
       <TooltipProvider>
         <AuthProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
@@ -67,8 +74,6 @@ function App() {
         </AuthProvider>
         <Toaster />
       </TooltipProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
-
-export default App;

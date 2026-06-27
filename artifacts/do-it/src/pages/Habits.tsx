@@ -10,6 +10,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Plus, Loader2 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Checkbox } from '../components/TaskItem';
+import { useUpdateHabit, useDeleteHabit } from '@workspace/api-client-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreVertical, Archive, Trash2 } from "lucide-react";
 
 export default function Habits() {
   const { user } = useAuth();
@@ -194,16 +197,35 @@ export default function Habits() {
               const dateStr = format(selectedDate, 'yyyy-MM-dd');
               const isLogged = habit.logs?.includes(dateStr);
 
-              return (
-                <motion.div layout key={habit.id} className="flex items-center gap-3 py-3 px-2 rounded-xl cursor-pointer transition-colors hover:bg-gray-50/50" onClick={() => handleToggleLog(habit.id, isLogged)}>
-                  <Checkbox completada={isLogged} onToggle={(e) => { e.stopPropagation(); handleToggleLog(habit.id, isLogged); }} />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-[15px] leading-tight truncate transition-colors ${isLogged ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
-                      {habit.nombre}
-                    </p>
-                  </div>
-                </motion.div>
-              );
+            return (
+              <motion.div layout key={habit.id} className="flex items-center gap-3 py-3 px-2 rounded-xl transition-colors hover:bg-gray-50/50">
+                <Checkbox completada={isLogged} onToggle={(e) => { e.stopPropagation(); handleToggleLog(habit.id, isLogged); }} />
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleToggleLog(habit.id, isLogged)}>
+                  <p className={`text-[15px] leading-tight truncate transition-colors ${isLogged ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+                    {habit.nombre}
+                  </p>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-2 text-gray-400 hover:text-black transition-colors rounded-lg">
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="rounded-xl">
+                    <DropdownMenuItem onClick={() => {
+                      useUpdateHabit().mutate({ id: habit.id, data: { archived: true } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetHabitsQueryKey() }) });
+                    }}>
+                      <Archive className="w-4 h-4 mr-2" /> Archivar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => {
+                      useDeleteHabit().mutate({ id: habit.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetHabitsQueryKey() }) });
+                    }}>
+                      <Trash2 className="w-4 h-4 mr-2" /> Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </motion.div>
+            );
             })}
           </div>
         )}

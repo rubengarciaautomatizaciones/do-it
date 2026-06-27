@@ -187,6 +187,31 @@ export const CreateHabitBody = zod.object({
 })
 
 
+export const UpdateHabitParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateHabitBody = zod.object({
+  "nombre": zod.string().optional(),
+  "frecuencia": zod.string().optional(),
+  "targetDays": zod.array(zod.number()).optional(),
+  "archived": zod.boolean().optional()
+})
+
+export const UpdateHabitResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "nombre": zod.string(),
+  "frecuencia": zod.string(),
+  "targetDays": zod.array(zod.number()),
+  "archived": zod.boolean(),
+  "currentStreak": zod.number(),
+  "bestStreak": zod.number(),
+  "createdAt": zod.string(),
+  "logs": zod.array(zod.string())
+})
+
+
 export const DeleteHabitParams = zod.object({
   "id": zod.coerce.string()
 })
@@ -257,4 +282,9 @@ export const CreatePortalBody = zod.object({
 
 export const CreatePortalResponse = zod.object({
   "url": zod.string().optional()
+})
+
+
+export const DeleteAccountQueryParams = zod.object({
+  "userId": zod.coerce.string()
 })

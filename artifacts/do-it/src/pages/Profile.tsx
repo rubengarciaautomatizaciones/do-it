@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { LogOut, User, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2, Calendar as CalendarIcon } from 'lucide-react';
-import { useGetPreferences, useUpdatePreferences, useCreatePortal, getGetPreferencesQueryKey } from '@workspace/api-client-react';
+import { useGetPreferences, useUpdatePreferences, useCreatePortal, useDeleteAccount, getGetPreferencesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -73,6 +73,7 @@ export default function Profile() {
   const { data: prefs, isLoading } = useGetPreferences();
   const updatePrefs = useUpdatePreferences();
   const createPortal = useCreatePortal();
+  const deleteAccount = useDeleteAccount();
 
   // Estados para Modales
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -83,6 +84,10 @@ export default function Profile() {
   const [supportSubject, setSupportSubject] = useState('');
   const [supportMessage, setSupportMessage] = useState('');
   const [isSendingSupport, setIsSendingSupport] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Estado para Notificaciones Push
   const [pushStatus, setPushStatus] = useState<string>('Comprobando...');
@@ -210,6 +215,23 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (deleteConfirmText !== 'ELIMINAR' || !user) return;
+    setIsDeleting(true);
+
+    deleteAccount.mutate({ params: { userId: user.id } } as any, {
+      onSuccess: async () => {
+        await signOut();
+        window.location.href = '/';
+      },
+      onError: (err: any) => {
+        setIsDeleting(false);
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+      }
+    });
+  };
+
   return (
     <div className="min-h-[100dvh] bg-white pb-32">
       <div className="px-6 pt-12 pb-6 max-w-2xl mx-auto">
@@ -275,9 +297,13 @@ export default function Profile() {
           <ProfileItem icon={HelpCircle} label="Contactar soporte" onClick={() => setIsSupportModalOpen(true)} />
         </ProfileSection>
 
-        <div className="mt-12">
-          <button onClick={() => signOut()} className="w-full bg-red-50 text-red-600 rounded-xl py-4 font-medium flex items-center justify-center gap-2 hover:bg-red-100 transition-colors">
+        <div className="mt-12 space-y-3">
+          <button onClick={() => signOut()} className="w-full bg-gray-50 text-gray-900 rounded-xl py-4 font-medium flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors">
             <LogOut className="w-5 h-5" /> Cerrar sesión
+          </button>
+
+          <button onClick={() => setIsDeleteModalOpen(true)} className="w-full bg-white border border-red-100 text-red-600 rounded-xl py-4 font-medium flex items-center justify-center gap-2 hover:bg-red-50 transition-colors">
+            Eliminar cuenta
           </button>
         </div>
       </div>
@@ -331,6 +357,29 @@ export default function Profile() {
             />
             <button type="submit" disabled={isSendingSupport || !supportSubject || !supportMessage} className="w-full bg-black text-white rounded-xl py-3 font-medium disabled:opacity-50 flex justify-center">
               {isSendingSupport ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enviar mensaje'}
+            </button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Eliminar Cuenta */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-red-600">Eliminar cuenta</DialogTitle>
+            <DialogDescription>Esta acción es irreversible. Se cancelará tu suscripción y se borrarán todos tus datos.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleDeleteAccount} className="space-y-4 mt-4">
+            <p className="text-sm text-gray-600">Escribe <strong>ELIMINAR</strong> para confirmar:</p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="ELIMINAR"
+              className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-red-500"
+            />
+            <button type="submit" disabled={isDeleting || deleteConfirmText !== 'ELIMINAR'} className="w-full bg-red-600 text-white rounded-xl py-3 font-medium disabled:opacity-50 flex justify-center hover:bg-red-700 transition-colors">
+              {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Eliminar definitivamente'}
             </button>
           </form>
         </DialogContent>

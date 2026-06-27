@@ -4,6 +4,7 @@ import { eq, and, gte } from "drizzle-orm";
 import { db, habitsTable, habitLogsTable } from "@workspace/db";
 import { CreateHabitBody, DeleteHabitParams, LogHabitParams, UnlogHabitParams } from "@workspace/api-zod";
 import { userPreferencesTable } from "@workspace/db";
+import { UpdateHabitBody } from "@workspace/api-zod";
 
 const router = Router();
 
@@ -62,6 +63,23 @@ router.post("/habits", async (req, res) => {
 
   return res.status(201).json(mapHabit(habit, []));
 });
+
+router.patch("/habits/:id", async (req, res) => {
+  const { id } = req.params;
+  const parsed = UpdateHabitBody.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
+
+  const [habit] = await db.update(habitsTable)
+    .set(parsed.data)
+    .where(eq(habitsTable.id, id))
+    .returning();
+
+  if (!habit) return res.status(404).json({ error: "Not found" });
+
+  const logs = await db.select().from(habitLogsTable).where(eq(habitLogsTable.habitId, id));
+  return res.json(mapHabit(habit, logs));
+});
+
 
 router.delete("/habits/:id", async (req, res) => {
   const parsed = DeleteHabitParams.safeParse(req.params);
