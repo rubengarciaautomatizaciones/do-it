@@ -3,11 +3,11 @@ import { useGetHabits, useCreateHabit, useUpdateHabit, useDeleteHabit, useLogHab
 import { BottomTabBar } from '../components/BottomTabBar';
 import { useAuth } from '../contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
-import { format, subDays, addDays, isToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, subDays, addDays, isToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, Loader2, Archive, Settings, Trash2, Calendar as CalendarIcon, Target, Clock, Activity } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { ChevronLeft, ChevronRight, Plus, Loader2, Settings, Trash2, Calendar as CalendarIcon, Target, Clock, Activity } from 'lucide-react';
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Checkbox } from '../components/TaskItem';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,6 +54,43 @@ function NumericHabitControl({ value, target, unit, onChange }: { value: number,
   );
 }
 
+// --- BOTÓN DE ELIMINAR CON CONFIRMACIÓN ---
+function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => void }) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isConfirming) timer = setTimeout(() => setIsConfirming(false), 2000);
+    return () => clearTimeout(timer);
+  }, [isConfirming]);
+
+  return (
+    <div className="relative flex items-center justify-end h-8 min-w-[70px]" onClick={e => e.stopPropagation()}>
+      <AnimatePresence mode="wait">
+        {!isConfirming ? (
+          <motion.button
+            key="trash"
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsConfirming(true); }}
+            className="text-gray-400 hover:text-red-500 p-2 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-5 h-5" />
+          </motion.button>
+        ) : (
+          <motion.button
+            key="confirm"
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(e); setIsConfirming(false); }}
+            className="bg-black text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center shadow-sm"
+          >
+            Eliminar
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Habits() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -66,9 +103,13 @@ export default function Habits() {
   const queryClient = useQueryClient();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'activos' | 'archivados'>('activos');
 
-  // Estados del Modal de Edición/Creación
+  // Filtros de Gráficas
+  const [chartHabitFilter, setChartHabitFilter] = useState<string>('all');
+  const [chartTimeFilter, setChartTimeFilter] = useState<number>(7);
+
+  // Estados de Modales
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -122,16 +163,16 @@ export default function Habits() {
 
     const payload = {
       nombre: fNombre.trim(),
-      descripcion: fDescripcion.trim() || null,
+      descripcion: fDescripcion.trim() || undefined, // Solución al bug: enviar undefined si está vacío
       tipoMeta: fTipoMeta,
       metaNumero: fMetaNumero,
-      unidad: fUnidad.trim() || null,
+      unidad: fUnidad.trim() || undefined,
       frecuenciaTipo: fFrecuenciaTipo,
       frecuenciaValor: fFrecuenciaValor,
-      recordatorioHora: fRecordatorioHora || null,
+      recordatorioHora: fRecordatorioHora || undefined,
       fechaInicio: fFechaInicio,
-      fechaFin: fFechaFin || null,
-      estado: fEstado,
+      fechaFin: fFechaFin || undefined,
+      estado: editingId ? fEstado : 'activo', // Al crear, siempre es activo
     };
 
     if (editingId) {
@@ -139,7 +180,7 @@ export default function Habits() {
         onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetHabitsQueryKey() }); setIsModalOpen(false); }
       });
     } else {
-      createHabit.mutate({ data: { ...payload, userId: user.id } }, {
+      createHabit.mutate({ data: { ...payload, userId: user.id } as any }, {
         onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetHabitsQueryKey() }); setIsModalOpen(false); },
         onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
       });
@@ -159,74 +200,77 @@ export default function Habits() {
 
   const visibleHabits = useMemo(() => {
     if (!allHabits) return [];
-    if (viewMode === 'archivados') return allHabits.filter(h => h.estado === 'archivado');
-
     return allHabits.filter(h => {
-      if (h.estado === 'archivado') return false;
-      // Si tiene fecha de inicio futura, no lo mostramos hoy
+      if (h.estado !== 'activo') return false;
       if (h.fechaInicio > dateStr) return false;
-      // Si tiene fecha fin y ya pasó, no lo mostramos
       if (h.fechaFin && h.fechaFin < dateStr) return false;
-
-      // Filtro de días específicos
       if (h.frecuenciaTipo === 'dias_especificos' && !h.frecuenciaValor.includes(dayOfWeek)) return false;
-
       return true;
     });
-  }, [allHabits, viewMode, dateStr, dayOfWeek]);
+  }, [allHabits, dateStr, dayOfWeek]);
 
-  const stats = useMemo(() => {
-    if (!visibleHabits || visibleHabits.length === 0) return { percent: 0, weeklyData: [] };
+  const groupedSettingsHabits = useMemo(() => {
+    if (!allHabits) return { activos: [], pausados: [], archivados: [] };
+    return {
+      activos: allHabits.filter(h => h.estado === 'activo'),
+      pausados: allHabits.filter(h => h.estado === 'pausado'),
+      archivados: allHabits.filter(h => h.estado === 'archivado'),
+    };
+  }, [allHabits]);
 
-    // Calcular porcentaje del Donut (Progreso de Hoy)
-    let totalPercent = 0;
-    let applicableHabits = 0;
+  const todayStats = useMemo(() => {
+    if (!allHabits) return { completed: 0, total: 0, percent: 0 };
+    let total = 0;
+    let completed = 0;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayDay = new Date().getDay();
 
-    visibleHabits.forEach(h => {
-      if (h.estado === 'pausado') return;
-      applicableHabits++;
+    allHabits.forEach(h => {
+      if (h.estado !== 'activo' || h.fechaInicio > todayStr || (h.fechaFin && h.fechaFin < todayStr)) return;
+      if (h.frecuenciaTipo === 'dias_especificos' && !h.frecuenciaValor.includes(todayDay)) return;
 
-      const todayLog = h.logs?.find((l: any) => l.fecha === dateStr);
-      const val = todayLog ? todayLog.valor : 0;
-
-      if (h.tipoMeta === 'boolean') {
-        totalPercent += val > 0 ? 100 : 0;
-      } else {
-        totalPercent += Math.min(100, (val / h.metaNumero) * 100);
+      total++;
+      const log = h.logs?.find((l: any) => l.fecha === todayStr);
+      if (log && log.valor >= (h.tipoMeta === 'boolean' ? 1 : h.metaNumero)) {
+        completed++;
       }
     });
 
-    const percent = applicableHabits === 0 ? 0 : Math.round(totalPercent / applicableHabits);
+    const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+    return { completed, total, percent };
+  }, [allHabits]);
 
-    // Datos para el Bar Chart (últimos 7 días)
-    const weeklyData = Array.from({ length: 7 }).map((_, i) => {
-      const d = subDays(new Date(), 6 - i);
+  const lineChartData = useMemo(() => {
+    if (!allHabits) return [];
+    const data = [];
+    for (let i = chartTimeFilter - 1; i >= 0; i--) {
+      const d = subDays(new Date(), i);
       const dStr = format(d, 'yyyy-MM-dd');
+      let val = 0;
 
-      let dayTotal = 0;
-      let dayCompleted = 0;
-
-      allHabits?.forEach(h => {
-        if (h.estado !== 'activo' || h.fechaInicio > dStr || (h.fechaFin && h.fechaFin < dStr)) return;
-        if (h.frecuenciaTipo === 'dias_especificos' && !h.frecuenciaValor.includes(d.getDay())) return;
-
-        dayTotal++;
-        const log = h.logs?.find((l: any) => l.fecha === dStr);
-        if (log && log.valor >= (h.tipoMeta === 'boolean' ? 1 : h.metaNumero)) {
-          dayCompleted++;
+      if (chartHabitFilter === 'all') {
+        allHabits.forEach(h => {
+          if (h.estado !== 'activo' || h.fechaInicio > dStr || (h.fechaFin && h.fechaFin < dStr)) return;
+          if (h.frecuenciaTipo === 'dias_especificos' && !h.frecuenciaValor.includes(d.getDay())) return;
+          const log = h.logs?.find((l: any) => l.fecha === dStr);
+          if (log && log.valor >= (h.tipoMeta === 'boolean' ? 1 : h.metaNumero)) val++;
+        });
+      } else {
+        const h = allHabits.find(h => h.id === chartHabitFilter);
+        if (h) {
+          const log = h.logs?.find((l: any) => l.fecha === dStr);
+          val = log ? log.valor : 0;
         }
-      });
+      }
 
-      return {
-        name: format(d, 'EEEEEE', { locale: es }).toUpperCase(),
-        completados: dayCompleted,
-        total: dayTotal,
+      data.push({
+        name: format(d, chartTimeFilter > 7 ? 'd MMM' : 'EEEEEE', { locale: es }).toUpperCase(),
+        valor: val,
         fullDate: format(d, "d 'de' MMMM", { locale: es })
-      };
-    });
-
-    return { percent, weeklyData };
-  }, [visibleHabits, allHabits, dateStr]);
+      });
+    }
+    return data;
+  }, [allHabits, chartTimeFilter, chartHabitFilter]);
 
   const handleUpdateValue = (habitId: string, newValue: number) => {
     if (newValue <= 0) {
@@ -241,42 +285,36 @@ export default function Habits() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-white pb-32">
-      <div className="px-6 pt-12 pb-6 max-w-2xl mx-auto">
+    <div className="h-[100dvh] flex flex-col bg-white overflow-hidden">
 
-        {/* HEADER */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-[#111111]">
-            {viewMode === 'activos' ? 'Hábitos' : 'Archivados'}
-          </h1>
+      {/* CABECERA FIJA */}
+      <div className="flex-shrink-0 px-6 pt-12 pb-4 max-w-2xl mx-auto w-full bg-white z-20">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-semibold tracking-tight text-[#111111]">Hábitos</h1>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setViewMode(viewMode === 'activos' ? 'archivados' : 'activos')} 
-              className={`p-2 rounded-full transition-colors ${viewMode === 'archivados' ? 'bg-black text-white' : 'bg-gray-50 text-gray-900 hover:bg-gray-100'}`}
-            >
-              <Archive className="w-5 h-5" />
+            <button onClick={() => setIsSettingsOpen(true)} className="p-2 bg-gray-50 text-gray-900 rounded-full hover:bg-gray-100 transition-colors">
+              <Settings className="w-5 h-5" />
             </button>
-            {viewMode === 'activos' && (
-              <button onClick={() => openModal()} className="p-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-sm">
-                <Plus className="w-5 h-5" />
-              </button>
-            )}
+            <button onClick={() => openModal()} className="p-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-sm">
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        {/* GRÁFICAS (Solo en vista Activos) */}
-        {viewMode === 'activos' && !isLoading && allHabits && allHabits.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {/* GRÁFICAS */}
+        {!isLoading && allHabits && allHabits.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {/* Donut Chart (Hoy) */}
             <div className="bg-gray-50 rounded-2xl p-6 flex items-center justify-between border border-gray-100">
               <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Éxito de hoy</p>
-                <p className="text-3xl font-semibold text-gray-900">{stats.percent}%</p>
+                <p className="text-sm font-medium text-gray-500 mb-1">Hoy</p>
+                <p className="text-3xl font-semibold text-gray-900">{todayStats.completed}<span className="text-lg text-gray-400">/{todayStats.total}</span></p>
               </div>
               <div className="w-24 h-24 relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={[{ value: stats.percent, color: '#111111' }, { value: 100 - stats.percent, color: '#E5E7EB' }]}
+                      data={[{ value: todayStats.percent, color: '#111111' }, { value: 100 - todayStats.percent, color: '#E5E7EB' }]}
                       cx="50%" cy="50%" innerRadius={30} outerRadius={40}
                       dataKey="value" stroke="none" startAngle={90} endAngle={-270}
                     >
@@ -284,60 +322,82 @@ export default function Habits() {
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-semibold text-gray-900">{todayStats.percent}%</span>
+                </div>
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 h-[144px] flex flex-col">
-              <p className="text-sm font-medium text-gray-500 mb-2">Últimos 7 días</p>
+            {/* Line Chart (Evolución) */}
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 h-[144px] flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <Select value={chartHabitFilter} onValueChange={setChartHabitFilter}>
+                  <SelectTrigger className="h-6 text-xs bg-transparent border-0 p-0 shadow-none focus:ring-0 font-medium text-gray-600 w-auto">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">Todos los hábitos</SelectItem>
+                    {allHabits.map(h => <SelectItem key={h.id} value={h.id}>{h.nombre}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={chartTimeFilter.toString()} onValueChange={(v) => setChartTimeFilter(parseInt(v))}>
+                  <SelectTrigger className="h-6 text-xs bg-transparent border-0 p-0 shadow-none focus:ring-0 font-medium text-gray-400 w-auto">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="7">7 días</SelectItem>
+                    <SelectItem value="30">1 mes</SelectItem>
+                    <SelectItem value="90">3 meses</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex-1 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.weeklyData}>
+                  <LineChart data={lineChartData}>
                     <RechartsTooltip 
-                      cursor={{ fill: 'transparent' }}
+                      cursor={{ stroke: '#E5E7EB', strokeWidth: 1, strokeDasharray: '4 4' }}
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
-                          return <div className="bg-black text-white text-xs py-1 px-2 rounded-lg shadow-xl">{data.fullDate}: {data.completados}/{data.total}</div>;
+                          return <div className="bg-black text-white text-xs py-1 px-2 rounded-lg shadow-xl">{data.fullDate}: {data.valor}</div>;
                         }
                         return null;
                       }}
                     />
-                    <Bar dataKey="completados" fill="#111111" radius={[4, 4, 4, 4]} maxBarSize={30} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A3A3A3' }} dy={5} />
-                  </BarChart>
+                    <Line type="monotone" dataKey="valor" stroke="#111111" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#111111', stroke: '#fff', strokeWidth: 2 }} />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
         )}
 
-        {/* SELECTOR DE FECHA (Solo en vista Activos) */}
-        {viewMode === 'activos' && (
-          <div className="flex items-center justify-between bg-white border border-gray-100 rounded-full p-1 mb-6 shadow-sm">
-            <button onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-              <ChevronLeft className="w-5 h-5 text-gray-500" />
-            </button>
-            <span className="text-sm font-semibold text-gray-900">
-              {isToday(selectedDate) ? 'Hoy' : format(selectedDate, "d 'de' MMMM", { locale: es })}
-            </span>
-            <button onClick={() => setSelectedDate(addDays(selectedDate, 1))} disabled={isToday(selectedDate)} className={`p-2 rounded-full transition-colors ${isToday(selectedDate) ? 'opacity-30' : 'hover:bg-gray-50'}`}>
-              <ChevronRight className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-        )}
+        {/* SELECTOR DE FECHA */}
+        <div className="flex items-center justify-between bg-white border border-gray-100 rounded-full p-1 shadow-sm">
+          <button onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
+            <ChevronLeft className="w-5 h-5 text-gray-500" />
+          </button>
+          <span className="text-sm font-semibold text-gray-900">
+            {isToday(selectedDate) ? 'Hoy' : format(selectedDate, "d 'de' MMMM", { locale: es })}
+          </span>
+          <button onClick={() => setSelectedDate(addDays(selectedDate, 1))} disabled={isToday(selectedDate)} className={`p-2 rounded-full transition-colors ${isToday(selectedDate) ? 'opacity-30' : 'hover:bg-gray-50'}`}>
+            <ChevronRight className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+      </div>
 
-        {/* LISTA DE HÁBITOS */}
+      {/* LISTA DE HÁBITOS (SCROLLABLE) */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-6 pb-32 max-w-2xl mx-auto w-full">
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
         ) : visibleHabits.length === 0 ? (
-          <div className="py-12 text-center"><p className="text-[#A3A3A3]">No hay hábitos aquí.</p></div>
+          <div className="py-12 text-center"><p className="text-[#A3A3A3]">No hay hábitos activos para este día.</p></div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 pt-2">
             {visibleHabits.map((habit) => {
               const todayLog = habit.logs?.find((l: any) => l.fecha === dateStr);
               const isCompleted = todayLog ? todayLog.valor >= (habit.tipoMeta === 'boolean' ? 1 : habit.metaNumero) : false;
 
-              // Progreso Semanal/Mensual
               let progressText = "";
               if (habit.frecuenciaTipo === 'semanal') {
                 const start = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
@@ -352,16 +412,14 @@ export default function Habits() {
               }
 
               return (
-                <motion.div layout key={habit.id} className={`flex items-center gap-3 py-3 px-3 rounded-2xl transition-colors border ${habit.estado === 'pausado' ? 'bg-gray-50 border-transparent opacity-60' : 'bg-white border-gray-100 hover:shadow-md'}`}>
+                <motion.div layout key={habit.id} className="flex items-center gap-3 py-3 px-3 rounded-2xl transition-colors border bg-white border-gray-100 hover:shadow-md">
 
-                  {/* Control Izquierdo (Checkbox o Números) */}
                   {habit.tipoMeta === 'boolean' ? (
                     <Checkbox completada={isCompleted} onToggle={() => handleUpdateValue(habit.id, isCompleted ? 0 : 1)} />
                   ) : (
                     <NumericHabitControl value={todayLog?.valor || 0} target={habit.metaNumero} unit={habit.unidad} onChange={(val) => handleUpdateValue(habit.id, val)} />
                   )}
 
-                  {/* Cuerpo (Abre Modal) */}
                   <div className="flex-1 min-w-0 cursor-pointer pl-2" onClick={() => openModal(habit)}>
                     <div className="flex items-center gap-2">
                       <p className={`text-[15px] leading-tight truncate ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
@@ -382,16 +440,71 @@ export default function Habits() {
         )}
       </div>
 
+      {/* MODAL DE AJUSTES (Todos los hábitos) */}
+      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <DialogContent className="bg-white/95 backdrop-blur-xl rounded-t-3xl sm:rounded-3xl p-0 w-full h-[90vh] sm:h-[80vh] sm:max-w-md border-0 shadow-2xl overflow-hidden flex flex-col mt-auto sm:mt-0 [&>button]:hidden">
+          <div className="p-6 border-b border-gray-100/50 flex justify-between items-center sticky top-0 z-10">
+            <DialogTitle className="text-xl font-semibold">Ajustes de Hábitos</DialogTitle>
+            <button onClick={() => setIsSettingsOpen(false)} className="text-sm font-medium text-gray-500 hover:text-black">Cerrar</button>
+          </div>
+          <div className="p-6 overflow-y-auto no-scrollbar space-y-8">
+
+            {/* Activos */}
+            {groupedSettingsHabits.activos.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">Activos</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  {groupedSettingsHabits.activos.map(h => (
+                    <div key={h.id} onClick={() => openModal(h)} className="p-4 border-b border-gray-50 last:border-0 flex justify-between items-center cursor-pointer hover:bg-gray-50">
+                      <span className="text-sm font-medium text-gray-900">{h.nombre}</span>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pausados */}
+            {groupedSettingsHabits.pausados.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">Pausados</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  {groupedSettingsHabits.pausados.map(h => (
+                    <div key={h.id} onClick={() => openModal(h)} className="p-4 border-b border-gray-50 last:border-0 flex justify-between items-center cursor-pointer hover:bg-gray-50">
+                      <span className="text-sm font-medium text-gray-600">{h.nombre}</span>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Archivados */}
+            {groupedSettingsHabits.archivados.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">Archivados</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  {groupedSettingsHabits.archivados.map(h => (
+                    <div key={h.id} onClick={() => openModal(h)} className="p-4 border-b border-gray-50 last:border-0 flex justify-between items-center cursor-pointer hover:bg-gray-50">
+                      <span className="text-sm font-medium text-gray-400 line-through">{h.nombre}</span>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* MODAL DE EDICIÓN AVANZADA */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="bg-white rounded-3xl p-0 sm:max-w-lg border-0 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <DialogContent className="bg-white rounded-3xl p-0 sm:max-w-lg border-0 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col [&>button]:hidden">
           <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center sticky top-0 z-10">
+            <button onClick={() => setIsModalOpen(false)} className="text-sm font-medium text-gray-500 hover:text-black">Cancelar</button>
             <DialogTitle className="text-xl font-semibold">{editingId ? 'Editar Hábito' : 'Nuevo Hábito'}</DialogTitle>
-            {editingId && (
-              <button onClick={handleDelete} className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors">
-                <Trash2 className="w-5 h-5" />
-              </button>
-            )}
+            {editingId ? <DeleteConfirmButton onDelete={handleDelete} /> : <div className="w-10" />}
           </div>
 
           <div className="p-6 overflow-y-auto no-scrollbar space-y-6">
@@ -493,7 +606,7 @@ export default function Habits() {
 
           <div className="p-6 border-t border-gray-100 bg-white sticky bottom-0 z-10">
             <button type="submit" form="habit-form" className="w-full bg-black text-white rounded-xl py-4 font-semibold text-lg hover:bg-gray-800 transition-colors shadow-md">
-              Guardar hábito
+              Guardar
             </button>
           </div>
         </DialogContent>
