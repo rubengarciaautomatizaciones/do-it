@@ -19,9 +19,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icono.png'],
       workbox: {
-        // ESTO ES LA MAGIA: Le dice a la PWA que no intercepte las rutas del backend
+        // Le dice a la PWA que no intercepte las rutas del backend
         navigateFallbackDenylist: [/^\/api/],
-        importScripts: ['/push-sw.js'] // <-- NUEVO: Inyecta nuestro código de notificaciones
+        // Inyecta nuestro código de notificaciones
+        importScripts: ['/push-sw.js'],
+        // AUMENTO DE LÍMITE: Permite cachear archivos de hasta 5MB (evita el error de Vercel)
+        maximumFileSizeToCacheInBytes: 5000000 
       },
       manifest: {
         name: 'do it!',
