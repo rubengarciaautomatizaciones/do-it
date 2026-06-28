@@ -266,3 +266,110 @@
 .pill-input::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
+
+/* Estilos para inputs nativos de fecha y hora */
+.pill-input {
+  @apply bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none transition-shadow w-full max-w-[140px] cursor-pointer shadow-sm;
+}
+.pill-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.pill-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* FullCalendar Apple Minimalist Overrides */
+.fc {
+  --fc-border-color: #F5F5F5;
+  --fc-today-bg-color: transparent;
+  --fc-now-indicator-color: #111111;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Ocultar el texto de "Todo el día" pero mantener el espacio limpio */
+.fc-scrollgrid-section-all-day .fc-timegrid-axis-cushion {
+  display: none !important;
+}
+
+/* Estilo de los eventos (Linear Style) */
+.fc-event {
+  border-radius: 4px !important;
+  border: none !important;
+  border-left: 3px solid #111111 !important;
+  background-color: #F5F5F5 !important;
+  color: #111111 !important;
+  box-shadow: none !important;
+  transition: transform 0.1s !important;
+}
+.fc-event:hover {
+  transform: scale(1.01);
+  z-index: 10 !important;
+}
+.fc-event.completed-event {
+  opacity: 0.5;
+  border-left-color: #A3A3A3 !important;
+}
+.fc-timegrid-event .fc-event-main {
+  padding: 2px 4px !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+}
+.fc-daygrid-event {
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  margin: 1px 4px !important;
+  padding: 2px 4px !important;
+}
+
+/* Línea de la hora actual (Negra punteada) */
+.fc-timegrid-now-indicator-line {
+  border-color: #111111 !important;
+  border-style: dashed !important;
+  border-width: 1px 0 0 !important;
+}
+.fc-timegrid-now-indicator-arrow {
+  border-color: transparent transparent transparent #111111 !important;
+  border-width: 5px 0 5px 6px !important;
+  margin-top: -5px !important;
+}
+
+/* Cabecera de los días (Día actual con círculo negro) */
+.fc-col-header-cell {
+  padding: 12px 0 !important;
+  font-weight: 500 !important;
+  color: #A3A3A3 !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+.fc-col-header-cell-cushion {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 4px !important;
+}
+.fc-day-today .fc-col-header-cell-cushion {
+  background-color: #111111 !important;
+  color: #FFFFFF !important;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Limpieza de bordes */
+.fc-theme-standard .fc-scrollgrid {
+  border: none !important;
+}
+.fc-theme-standard td, .fc-theme-standard th {
+  border-color: #F5F5F5 !important;
+}
+.fc-timegrid-slot-label-cushion {
+  font-size: 0.75rem !important;
+  color: #A3A3A3 !important;
+  font-weight: 500 !important;
+}

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useUpdateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata, useGetTasks, getGetTasksQueryKey, Task } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link as LinkIcon, Plus, File, Mic, X, Folder, Loader2, Trash2 } from 'lucide-react';
+import { Link as LinkIcon, Plus, Mic, X, Folder, Loader2, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '../lib/supabase';
@@ -75,13 +75,13 @@ function AttachmentPreview({ att, onRemove }: { att: any, onRemove: () => void }
         {isImage && <img src={att.fileUrl} alt={att.fileName} className="absolute inset-0 w-full h-full object-cover" />}
         {isPdf && (
           <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-white">
-            <Document file={att.fileUrl} loading={<Loader2 className="w-6 h-6 animate-spin text-gray-300" />} error={<File className="w-8 h-8 text-gray-300" />}>
+            <Document file={att.fileUrl} loading={<Loader2 className="w-6 h-6 animate-spin text-gray-300" />} error={<Plus className="w-8 h-8 text-gray-300" />}>
               <Page pageNumber={1} width={250} renderTextLayer={false} renderAnnotationLayer={false} />
             </Document>
           </div>
         )}
         {isAudio && <Mic className="w-8 h-8 text-gray-300" />}
-        {!isImage && !isPdf && !isAudio && <File className="w-8 h-8 text-gray-300" />}
+        {!isImage && !isPdf && !isAudio && <Plus className="w-8 h-8 text-gray-300" />}
       </div>
       <div className="p-3 bg-white flex-1">
         <p className="text-sm font-medium text-gray-900 line-clamp-1">{att.fileName}</p>
@@ -103,7 +103,7 @@ function DeleteConfirmButton({ onDelete }: { onDelete: () => void }) {
   return (
     <AnimatePresence mode="wait">
       {!isConfirming ? (
-        <motion.button key="trash" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setIsConfirming(true)} className="w-9 h-9 flex items-center justify-center bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-colors border border-gray-100">
+        <motion.button key="trash" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setIsConfirming(true)} className="w-9 h-9 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-colors border border-gray-200 shadow-sm">
           <Trash2 className="w-4 h-4" />
         </motion.button>
       ) : (
@@ -139,7 +139,6 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
   const addAttachment = useAddTaskAttachment();
   const { data: allTasks } = useGetTasks();
 
-  // Leemos de la caché para que los cambios (ej. Proyecto) se reflejen al instante
   const currentTask = allTasks?.find(t => t.id === task?.id) || task;
 
   const [isAddingLink, setIsAddingLink] = useState(false);
@@ -148,7 +147,6 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
   const [newProjectName, setNewProjectName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Estados para Notificación Relativa
   const [notifValue, setNotifValue] = useState<string>('');
   const [notifUnit, setNotifUnit] = useState<string>('minutos');
 
@@ -213,15 +211,31 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
     deleteTask.mutate({ id: currentTask.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }); onClose(); } });
   };
 
-  // Lógica de actualización de fechas y notificaciones
+  // LÓGICA DE AUTO-COMPLETADO INTELIGENTE
   const handleDesdeChange = (newFecha: string | null, newHora: string | null) => {
     const updates: any = { fechaVencimiento: newFecha, horaInicio: newHora };
+
+    // Auto-completar Fecha Hasta (Si estaba vacía o era igual a la antigua)
+    if (newFecha && (!(currentTask as any).fechaFin || (currentTask as any).fechaFin === currentTask.fechaVencimiento)) {
+      updates.fechaFin = newFecha;
+    }
+
+    // Auto-completar Hora Hasta (+1 hora)
+    if (newHora && newHora !== currentTask.horaInicio) {
+      const [hours, minutes] = newHora.split(':').map(Number);
+      const endDate = new Date();
+      endDate.setHours(hours + 1, minutes);
+      updates.horaVencimiento = format(endDate, 'HH:mm');
+    }
+
+    // Actualizar Notificación Relativa
     const numVal = parseInt(notifValue);
     if (!isNaN(numVal) && numVal > 0) {
       const absTime = getAbsoluteNotifTime(newFecha, newHora, numVal, notifUnit);
       updates.fechaNotificacion = absTime.fechaNotificacion;
       updates.horaNotificacion = absTime.horaNotificacion;
     }
+
     updateTask.mutate({ id: currentTask.id, data: updates }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
   };
 
@@ -251,7 +265,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
           </div>
           <div className="flex items-center gap-2">
             <DeleteConfirmButton onDelete={handleDelete} />
-            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl transition-colors border border-gray-100">
+            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-500 rounded-xl transition-colors border border-gray-200 shadow-sm">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -281,9 +295,9 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
               <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex items-center justify-between gap-4 flex-1">
                 <span className="text-sm font-medium text-gray-900">Notificación</span>
                 <div className="flex items-center gap-2">
-                  <input type="number" min="1" value={notifValue} onChange={e => handleNotifChange(e.target.value, notifUnit)} className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm text-center font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none" placeholder="0" />
+                  <input type="number" min="1" value={notifValue} onChange={e => handleNotifChange(e.target.value, notifUnit)} className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm text-center font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none shadow-sm" placeholder="0" />
                   <Select value={notifUnit} onValueChange={(val) => handleNotifChange(notifValue, val)}>
-                    <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-none">
+                    <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -303,7 +317,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
                     <input autoFocus type="text" value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} onBlur={saveNewProject} onKeyDown={(e) => e.key === 'Enter' && saveNewProject()} placeholder="Nombre..." className="bg-transparent border-0 p-0 text-sm text-gray-900 focus:ring-0 outline-none w-full max-w-[120px]" />
                   ) : (
                     <Select value={currentTask.proyecto || "none"} onValueChange={handleProjectSelect}>
-                      <SelectTrigger className="bg-transparent border-0 p-0 h-auto shadow-none focus:ring-0 text-sm font-medium text-gray-700 w-auto">
+                      <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm w-auto min-w-[120px]">
                         <SelectValue placeholder="Ninguno" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
