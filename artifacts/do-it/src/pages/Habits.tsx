@@ -9,12 +9,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Plus, Loader2, Settings, Trash2, Calendar as CalendarIcon, Target, Clock, Activity } from 'lucide-react';
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Checkbox } from '../components/TaskItem';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '../hooks/use-toast';
 
-// --- COMPONENTE CONTROL NUMÉRICO (Evita lag al escribir) ---
-function NumericHabitControl({ value, target, unit, onChange }: { value: number, target: number, unit?: string, onChange: (val: number) => void }) {
+// --- COMPONENTE CONTROL NUMÉRICO (Cajas blancas) ---
+function NumericHabitControl({ value, target, onChange }: { value: number, target: number, onChange: (val: number) => void }) {
   const [localVal, setLocalVal] = useState(value.toString());
 
   useEffect(() => { setLocalVal(value.toString()); }, [value]);
@@ -35,9 +35,9 @@ function NumericHabitControl({ value, target, unit, onChange }: { value: number,
   };
 
   return (
-    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1" onClick={e => e.stopPropagation()}>
-      <button onClick={() => adjust(-1)} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black hover:bg-white rounded-md transition-colors font-medium text-lg">-</button>
-      <div className="flex items-center px-1">
+    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      <button onClick={() => adjust(-1)} className="w-7 h-7 flex items-center justify-center bg-white border border-gray-200 text-gray-500 hover:text-black rounded-md transition-colors font-medium text-lg shadow-sm">-</button>
+      <div className="flex items-center justify-center bg-white border border-gray-200 rounded-md h-7 px-2 shadow-sm min-w-[3.5rem]">
         <input 
           type="text" 
           inputMode="numeric" 
@@ -45,11 +45,11 @@ function NumericHabitControl({ value, target, unit, onChange }: { value: number,
           value={localVal} 
           onChange={(e) => setLocalVal(e.target.value)} 
           onBlur={handleBlur}
-          className="w-8 text-center bg-transparent border-none p-0 text-sm font-semibold focus:ring-0" 
+          className="w-5 text-center bg-transparent border-none p-0 text-sm font-semibold focus:ring-0" 
         />
-        {unit && <span className="text-xs text-gray-400 pr-1">{unit}</span>}
+        <span className="text-sm font-semibold text-gray-400">/{target}</span>
       </div>
-      <button onClick={() => adjust(1)} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-black hover:bg-white rounded-md transition-colors font-medium text-lg">+</button>
+      <button onClick={() => adjust(1)} className="w-7 h-7 flex items-center justify-center bg-white border border-gray-200 text-gray-500 hover:text-black rounded-md transition-colors font-medium text-lg shadow-sm">+</button>
     </div>
   );
 }
@@ -115,7 +115,6 @@ export default function Habits() {
 
   // Formulario
   const [fNombre, setFNombre] = useState('');
-  const [fDescripcion, setFDescripcion] = useState('');
   const [fTipoMeta, setFTipoMeta] = useState('boolean');
   const [fMetaNumero, setFMetaNumero] = useState(1);
   const [fUnidad, setFUnidad] = useState('');
@@ -130,7 +129,6 @@ export default function Habits() {
     if (habit) {
       setEditingId(habit.id);
       setFNombre(habit.nombre);
-      setFDescripcion(habit.descripcion || '');
       setFTipoMeta(habit.tipoMeta);
       setFMetaNumero(habit.metaNumero);
       setFUnidad(habit.unidad || '');
@@ -143,7 +141,6 @@ export default function Habits() {
     } else {
       setEditingId(null);
       setFNombre('');
-      setFDescripcion('');
       setFTipoMeta('boolean');
       setFMetaNumero(1);
       setFUnidad('');
@@ -163,7 +160,6 @@ export default function Habits() {
 
     const payload = {
       nombre: fNombre.trim(),
-      descripcion: fDescripcion.trim() || undefined, // Solución al bug: enviar undefined si está vacío
       tipoMeta: fTipoMeta,
       metaNumero: fMetaNumero,
       unidad: fUnidad.trim() || undefined,
@@ -172,7 +168,7 @@ export default function Habits() {
       recordatorioHora: fRecordatorioHora || undefined,
       fechaInicio: fFechaInicio,
       fechaFin: fFechaFin || undefined,
-      estado: editingId ? fEstado : 'activo', // Al crear, siempre es activo
+      estado: editingId ? fEstado : 'activo',
     };
 
     if (editingId) {
@@ -222,6 +218,7 @@ export default function Habits() {
     if (!allHabits) return { completed: 0, total: 0, percent: 0 };
     let total = 0;
     let completed = 0;
+    let totalPercentSum = 0;
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const todayDay = new Date().getDay();
 
@@ -231,12 +228,22 @@ export default function Habits() {
 
       total++;
       const log = h.logs?.find((l: any) => l.fecha === todayStr);
-      if (log && log.valor >= (h.tipoMeta === 'boolean' ? 1 : h.metaNumero)) {
+      const val = log ? log.valor : 0;
+
+      // Para el texto (0/1)
+      if (val >= (h.tipoMeta === 'boolean' ? 1 : h.metaNumero)) {
         completed++;
+      }
+
+      // Para el Donut (Porcentaje real)
+      if (h.tipoMeta === 'boolean') {
+        totalPercentSum += val > 0 ? 100 : 0;
+      } else {
+        totalPercentSum += Math.min(100, (val / h.metaNumero) * 100);
       }
     });
 
-    const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+    const percent = total === 0 ? 0 : Math.round(totalPercentSum / total);
     return { completed, total, percent };
   }, [allHabits]);
 
@@ -412,26 +419,22 @@ export default function Habits() {
               }
 
               return (
-                <motion.div layout key={habit.id} className="flex items-center gap-3 py-3 px-3 rounded-2xl transition-colors border bg-white border-gray-100 hover:shadow-md">
+                <motion.div layout key={habit.id} className={`flex items-center gap-3 py-3 px-4 rounded-2xl transition-colors border ${habit.estado === 'pausado' ? 'bg-gray-50 border-transparent opacity-60' : 'bg-white border-gray-100 shadow-sm hover:shadow-md'}`}>
 
                   {habit.tipoMeta === 'boolean' ? (
                     <Checkbox completada={isCompleted} onToggle={() => handleUpdateValue(habit.id, isCompleted ? 0 : 1)} />
                   ) : (
-                    <NumericHabitControl value={todayLog?.valor || 0} target={habit.metaNumero} unit={habit.unidad} onChange={(val) => handleUpdateValue(habit.id, val)} />
+                    <NumericHabitControl value={todayLog?.valor || 0} target={habit.metaNumero} onChange={(val) => handleUpdateValue(habit.id, val)} />
                   )}
 
-                  <div className="flex-1 min-w-0 cursor-pointer pl-2" onClick={() => openModal(habit)}>
-                    <div className="flex items-center gap-2">
-                      <p className={`text-[15px] leading-tight truncate ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
-                        {habit.nombre}
-                      </p>
-                      {habit.currentStreak > 2 && <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">🔥 {habit.currentStreak}</span>}
-                    </div>
-                    {(habit.descripcion || progressText) && (
-                      <p className="text-xs text-gray-400 mt-1 truncate">
-                        {progressText || habit.descripcion}
-                      </p>
+                  <div className="flex-1 min-w-0 cursor-pointer flex items-center gap-2 pl-1" onClick={() => openModal(habit)}>
+                    {habit.tipoMeta === 'numeric' && habit.unidad && (
+                      <span className={`text-[15px] ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-500'}`}>{habit.unidad}</span>
                     )}
+                    <p className={`text-[15px] leading-tight truncate ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+                      {habit.nombre}
+                    </p>
+                    {habit.currentStreak > 2 && <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">🔥 {habit.currentStreak}</span>}
                   </div>
                 </motion.div>
               );
@@ -453,7 +456,7 @@ export default function Habits() {
             {groupedSettingsHabits.activos.length > 0 && (
               <div>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">Activos</h3>
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                   {groupedSettingsHabits.activos.map(h => (
                     <div key={h.id} onClick={() => openModal(h)} className="p-4 border-b border-gray-50 last:border-0 flex justify-between items-center cursor-pointer hover:bg-gray-50">
                       <span className="text-sm font-medium text-gray-900">{h.nombre}</span>
@@ -468,7 +471,7 @@ export default function Habits() {
             {groupedSettingsHabits.pausados.length > 0 && (
               <div>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">Pausados</h3>
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                   {groupedSettingsHabits.pausados.map(h => (
                     <div key={h.id} onClick={() => openModal(h)} className="p-4 border-b border-gray-50 last:border-0 flex justify-between items-center cursor-pointer hover:bg-gray-50">
                       <span className="text-sm font-medium text-gray-600">{h.nombre}</span>
@@ -483,7 +486,7 @@ export default function Habits() {
             {groupedSettingsHabits.archivados.length > 0 && (
               <div>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">Archivados</h3>
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                   {groupedSettingsHabits.archivados.map(h => (
                     <div key={h.id} onClick={() => openModal(h)} className="p-4 border-b border-gray-50 last:border-0 flex justify-between items-center cursor-pointer hover:bg-gray-50">
                       <span className="text-sm font-medium text-gray-400 line-through">{h.nombre}</span>
@@ -510,10 +513,16 @@ export default function Habits() {
           <div className="p-6 overflow-y-auto no-scrollbar space-y-6">
             <form id="habit-form" onSubmit={handleSaveHabit} className="space-y-6">
 
-              {/* Nombre y Descripción */}
-              <div className="space-y-3">
-                <input type="text" required value={fNombre} onChange={e => setFNombre(e.target.value)} placeholder="Nombre del hábito (ej. Leer, Beber agua)" className="w-full text-lg font-medium bg-transparent border-b border-gray-200 px-0 py-2 focus:ring-0 focus:border-black placeholder:text-gray-300" />
-                <input type="text" value={fDescripcion} onChange={e => setFDescripcion(e.target.value)} placeholder="Descripción o motivación (opcional)" className="w-full text-sm bg-transparent border-b border-gray-200 px-0 py-2 focus:ring-0 focus:border-black placeholder:text-gray-300" />
+              {/* Nombre (Sin anillo de focus, solo borde inferior) */}
+              <div>
+                <input 
+                  type="text" 
+                  required 
+                  value={fNombre} 
+                  onChange={e => setFNombre(e.target.value)} 
+                  placeholder="Nombre del hábito (ej. Leer, Beber agua)" 
+                  className="w-full text-lg font-medium bg-transparent border-0 border-b-2 border-gray-100 px-0 py-2 focus:ring-0 focus:border-gray-300 transition-colors placeholder:text-gray-300" 
+                />
               </div>
 
               {/* Tipo de Meta */}

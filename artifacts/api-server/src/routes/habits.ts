@@ -19,7 +19,6 @@ const mapHabit = (h: any, logs: any[]) => ({
   id: h.id,
   userId: h.userId,
   nombre: h.nombre,
-  descripcion: h.descripcion,
   tipoMeta: h.tipoMeta,
   metaNumero: h.metaNumero,
   unidad: h.unidad,
@@ -40,10 +39,7 @@ router.get("/habits", async (req, res) => {
   const userId = req.query.userId as string;
   if (!userId) return res.status(400).json({ error: "userId required" });
 
-  // Devolvemos TODOS los hábitos (activos, pausados y archivados) para que el frontend los filtre
   const habits = await db.select().from(habitsTable).where(eq(habitsTable.userId, userId)).orderBy(habitsTable.createdAt);
-
-  // Traemos los logs de los últimos 30 días para el Heatmap
   const thirtyDaysAgo = getLast30Days()[0];
   const logs = await db.select().from(habitLogsTable).where(gte(habitLogsTable.fechaCompletado, thirtyDaysAgo));
 
@@ -69,8 +65,6 @@ router.post("/habits", async (req, res) => {
     estado: "activo"
   }).returning();
 
-  // TODO: Programar QStash para recordatorioHora
-
   return res.status(201).json(mapHabit(habit, []));
 });
 
@@ -86,8 +80,6 @@ router.patch("/habits/:id", async (req, res) => {
 
   if (!habit) return res.status(404).json({ error: "Not found" });
 
-  // TODO: Reprogramar QStash si cambia recordatorioHora
-
   const logs = await db.select().from(habitLogsTable).where(eq(habitLogsTable.habitId, id));
   return res.json(mapHabit(habit, logs));
 });
@@ -95,8 +87,6 @@ router.patch("/habits/:id", async (req, res) => {
 router.delete("/habits/:id", async (req, res) => {
   const parsed = DeleteHabitParams.safeParse(req.params);
   if (!parsed.success) return res.status(400).json({ error: "Invalid id" });
-
-  // TODO: Cancelar QStash si existe
 
   await db.delete(habitsTable).where(eq(habitsTable.id, parsed.data.id));
   return res.status(204).send();

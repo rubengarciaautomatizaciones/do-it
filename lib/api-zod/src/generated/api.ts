@@ -165,7 +165,6 @@ export const GetHabitsResponseItem = zod.object({
   "id": zod.string(),
   "userId": zod.string(),
   "nombre": zod.string(),
-  "descripcion": zod.string().nullish(),
   "tipoMeta": zod.string(),
   "metaNumero": zod.number(),
   "unidad": zod.string().nullish(),
@@ -192,7 +191,6 @@ export const GetHabitsResponse = zod.array(GetHabitsResponseItem)
 
 export const CreateHabitBody = zod.object({
   "nombre": zod.string().min(1),
-  "descripcion": zod.string().nullish(),
   "tipoMeta": zod.string().optional(),
   "metaNumero": zod.number().optional(),
   "unidad": zod.string().nullish(),
@@ -211,7 +209,6 @@ export const UpdateHabitParams = zod.object({
 
 export const UpdateHabitBody = zod.object({
   "nombre": zod.string().optional(),
-  "descripcion": zod.string().nullish(),
   "tipoMeta": zod.string().optional(),
   "metaNumero": zod.number().optional(),
   "unidad": zod.string().nullish(),
@@ -227,7 +224,6 @@ export const UpdateHabitResponse = zod.object({
   "id": zod.string(),
   "userId": zod.string(),
   "nombre": zod.string(),
-  "descripcion": zod.string().nullish(),
   "tipoMeta": zod.string(),
   "metaNumero": zod.number(),
   "unidad": zod.string().nullish(),

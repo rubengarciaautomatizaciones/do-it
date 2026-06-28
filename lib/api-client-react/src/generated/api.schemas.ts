@@ -120,8 +120,6 @@ export interface Habit {
   id: string;
   userId: string;
   nombre: string;
-  /** @nullable */
-  descripcion?: string | null;
   tipoMeta: string;
   metaNumero: number;
   /** @nullable */
@@ -150,8 +148,6 @@ export interface HabitWithLogs {
   id: string;
   userId: string;
   nombre: string;
-  /** @nullable */
-  descripcion?: string | null;
   tipoMeta: string;
   metaNumero: number;
   /** @nullable */
@@ -175,8 +171,6 @@ export interface HabitWithLogs {
 export interface HabitInput {
   /** @minLength 1 */
   nombre: string;
-  /** @nullable */
-  descripcion?: string | null;
   tipoMeta?: string;
   metaNumero?: number;
   /** @nullable */
@@ -193,8 +187,6 @@ export interface HabitInput {
 
 export interface UpdateHabitBody {
   nombre?: string;
-  /** @nullable */
-  descripcion?: string | null;
   tipoMeta?: string;
   metaNumero?: number;
   /** @nullable */

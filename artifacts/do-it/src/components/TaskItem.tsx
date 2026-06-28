@@ -388,27 +388,27 @@ export function TaskRowDesktop({ task, currentFilter }: { task: Task, currentFil
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, x: 100, transition: { duration: 0.3 } }}
           id={`task-${task.id}`}
-          className={`group border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer`}
+          className={`group bg-white transition-shadow hover:shadow-md cursor-pointer`}
         >
-          <td className="p-2 text-center">
+          <td className="p-2 text-center border-y border-l border-gray-100 rounded-l-2xl shadow-sm">
             <Checkbox completada={localCompletada} onToggle={toggleComplete} />
           </td>
-          <td className={`p-3 text-[15px] truncate ${localCompletada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+          <td className={`p-3 text-[15px] truncate border-y border-gray-100 shadow-sm ${localCompletada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
             {task.titulo}
           </td>
-          <td className="p-3 text-gray-500 text-sm truncate">
+          <td className="p-3 text-gray-500 text-sm truncate border-y border-gray-100 shadow-sm">
             {plainTextDescription}
           </td>
-          <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
+          <td className="p-3 text-gray-500 text-sm whitespace-nowrap border-y border-gray-100 shadow-sm">
             {task.fechaVencimiento ? `${format(new Date(task.fechaVencimiento), "d MMM yyyy", { locale: es })}${task.horaVencimiento ? ` · ${task.horaVencimiento}` : ''}` : ''}
           </td>
-          <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
+          <td className="p-3 text-gray-500 text-sm whitespace-nowrap border-y border-gray-100 shadow-sm">
             {task.fechaNotificacion ? `${format(new Date(task.fechaNotificacion), "d MMM yyyy", { locale: es })}${task.horaNotificacion ? ` · ${task.horaNotificacion}` : ''}` : ''}
           </td>
-          <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
+          <td className="p-3 text-gray-500 text-sm whitespace-nowrap border-y border-gray-100 shadow-sm">
             {task.proyecto}
           </td>
-          <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
+          <td className="p-3 text-gray-500 text-sm whitespace-nowrap border-y border-gray-100 shadow-sm">
             {(task.attachments?.length > 0 || task.links?.length > 0) && (
               <div className="flex items-center gap-2">
                 {task.attachments?.length > 0 && <span className="flex items-center gap-1"><Paperclip className="w-3 h-3"/> {task.attachments.length}</span>}
@@ -416,7 +416,7 @@ export function TaskRowDesktop({ task, currentFilter }: { task: Task, currentFil
               </div>
             )}
           </td>
-          <td className="p-3 text-right">
+          <td className="p-3 text-right border-y border-r border-gray-100 rounded-r-2xl shadow-sm">
             <DeleteConfirmButton onDelete={(e) => {
               e.preventDefault(); e.stopPropagation();
               deleteTask.mutate({ id: task.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
