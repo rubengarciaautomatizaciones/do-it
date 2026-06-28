@@ -133,8 +133,8 @@ export default function Tasks() {
           </div>
         ) : (
           <div className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar border-t border-x border-gray-100 rounded-t-xl bg-white relative pb-56">
-            <table className="w-full text-sm text-left table-fixed min-w-[900px] border-separate border-spacing-y-2">
-              <thead className="text-gray-400 text-xs uppercase tracking-wider sticky top-0 z-20 bg-white">
+            <table className="w-full text-sm text-left table-fixed min-w-[900px]">
+              <thead className="bg-gray-50/95 backdrop-blur-sm text-gray-500 border-b border-gray-100 sticky top-0 z-20">
                 <tr>
                   <th className="w-14 p-3 text-center font-medium"></th>
                   <th className="w-2/12 p-3 font-medium">Título</th>
