@@ -1,42 +1,103 @@
 import React, { useState, useMemo } from 'react';
-import { useGetTasks, useGetPreferences } from '@workspace/api-client-react';
+import { useGetTasks, useGetPreferences, useCreateTask, getGetTasksQueryKey, Task } from '@workspace/api-client-react';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { useAuth } from '../contexts/AuthContext';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { useIsMobile } from '../hooks/use-mobile';
+import { useQueryClient } from '@tanstack/react-query';
+import { TaskModal } from '../components/TaskModal';
+
+// FullCalendar Imports
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
 
 export default function Calendar() {
   const { user } = useAuth();
-  const { data: tasks } = useGetTasks();
+  const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
+  const { data: tasks, isLoading } = useGetTasks();
   const { data: prefs } = useGetPreferences();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const createTask = useCreateTask();
 
-  const daysInMonth = useMemo(() => {
-    const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
-    const end = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
-    return eachDayOfInterval({ start, end });
-  }, [currentDate]);
-
-  const tasksByDate = useMemo(() => {
-    if (!tasks) return {};
-    const map: Record<string, typeof tasks> = {};
-    tasks.forEach(task => {
-      if (!task.fechaVencimiento) return;
-      const dateStr = task.fechaVencimiento;
-      if (!map[dateStr]) map[dateStr] = [];
-      map[dateStr].push(task);
-    });
-    return map;
-  }, [tasks]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const handleGoogleConnect = async () => {
     if (!user) return;
-    // Si ya está conectado, no hacemos nada (se desconecta desde el Perfil)
     if (prefs?.googleRefreshToken) return;
-
     const res = await fetch(`/api/calendar/connect?userId=${user.id}`).then(r => r.json());
     if (res.url) window.location.href = res.url;
+  };
+
+  // Mapear tareas a eventos de FullCalendar
+  const events = useMemo(() => {
+    if (!tasks) return [];
+    return tasks.map(t => {
+      let start = t.fechaVencimiento;
+      let end = t.fechaVencimiento;
+      let allDay = true;
+
+      if (t.horaInicio) {
+        start = `${t.fechaVencimiento}T${t.horaInicio}:00`;
+        allDay = false;
+      } else if (t.horaVencimiento) {
+        start = `${t.fechaVencimiento}T${t.horaVencimiento}:00`;
+        allDay = false;
+      }
+
+      if (t.horaVencimiento) {
+        end = `${t.fechaVencimiento}T${t.horaVencimiento}:00`;
+      }
+
+      return {
+        id: t.id,
+        title: t.titulo,
+        start,
+        end,
+        allDay,
+        backgroundColor: t.completada ? '#F5F5F5' : '#111111',
+        borderColor: t.completada ? '#E5E7EB' : '#111111',
+        textColor: t.completada ? '#A3A3A3' : '#FFFFFF',
+        extendedProps: { task: t }
+      };
+    });
+  }, [tasks]);
+
+  // Crear tarea al hacer clic/arrastrar en el calendario
+  const handleDateSelect = (selectInfo: any) => {
+    if (!user) return;
+    const isAllDay = selectInfo.allDay;
+    const fechaVencimiento = format(selectInfo.start, 'yyyy-MM-dd');
+    let horaInicio = null;
+    let horaVencimiento = null;
+
+    if (!isAllDay) {
+      horaInicio = format(selectInfo.start, 'HH:mm');
+      horaVencimiento = format(selectInfo.end, 'HH:mm');
+    }
+
+    createTask.mutate({
+      data: {
+        titulo: "Nueva tarea",
+        userId: user.id,
+        fechaVencimiento,
+        horaInicio,
+        horaVencimiento
+      }
+    }, {
+      onSuccess: (newTask) => {
+        queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
+        setSelectedTask(newTask);
+      }
+    });
+  };
+
+  // Abrir modal al hacer clic en un evento
+  const handleEventClick = (clickInfo: any) => {
+    setSelectedTask(clickInfo.event.extendedProps.task);
   };
 
   return (
@@ -44,72 +105,51 @@ export default function Calendar() {
       <div className="px-6 pt-12 pb-4 flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight text-[#111111]">Calendario</h1>
 
-        {prefs?.googleRefreshToken ? (
-          <div className="flex items-center gap-2 text-sm font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
-            <CheckCircle2 className="w-4 h-4" /> Conectado
-          </div>
-        ) : (
+        {!prefs?.googleRefreshToken && (
           <button onClick={handleGoogleConnect} className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-black transition-colors bg-gray-50 px-3 py-1.5 rounded-full">
             <CalendarIcon className="w-4 h-4" /> Conectar Google
           </button>
         )}
       </div>
 
-      <div className="px-6 flex items-center justify-between mb-6">
-        <h2 className="text-lg font-medium text-gray-900 capitalize">
-          {format(currentDate, 'MMMM yyyy', { locale: es })}
-        </h2>
-        <div className="flex gap-2">
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-            <ChevronRight className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
+      <div className="flex-1 px-4 md:px-6 w-full max-w-[1600px] mx-auto">
+        {isLoading ? (
+          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
+        ) : (
+          <div className="bg-white h-[calc(100vh-180px)]">
+            <FullCalendar
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView={isMobile ? 'timeGridDay' : 'timeGridWeek'}
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: isMobile ? 'timeGridDay,dayGridMonth' : 'timeGridWeek,dayGridMonth'
+              }}
+              locale={es}
+              firstDay={prefs?.inicioSemana === 'domingo' ? 0 : 1}
+              events={events}
+              selectable={true}
+              selectMirror={true}
+              dayMaxEvents={true}
+              nowIndicator={true}
+              slotMinTime="06:00:00"
+              slotMaxTime="24:00:00"
+              allDayText="Todo el día"
+              buttonText={{
+                today: 'Hoy',
+                month: 'Mes',
+                week: 'Semana',
+                day: 'Día'
+              }}
+              select={handleDateSelect}
+              eventClick={handleEventClick}
+              height="100%"
+            />
+          </div>
+        )}
       </div>
 
-      {/* GRID DEL CALENDARIO */}
-      <div className="flex-1 px-6 overflow-x-auto no-scrollbar">
-        <div className="min-w-[700px] border border-gray-100 rounded-2xl overflow-hidden bg-gray-50/50">
-          {/* Cabecera días de la semana */}
-          <div className="grid grid-cols-7 border-b border-gray-100 bg-white">
-            {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(day => (
-              <div key={day} className="py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Celdas de días */}
-          <div className="grid grid-cols-7 auto-rows-[minmax(100px,auto)] bg-gray-100 gap-px">
-            {daysInMonth.map((day, idx) => {
-              const dateKey = format(day, 'yyyy-MM-dd');
-              const dayTasks = tasksByDate[dateKey] || [];
-              const isCurrentMonth = isSameMonth(day, currentDate);
-              const isDayToday = isToday(day);
-
-              return (
-                <div key={idx} className={`bg-white p-2 flex flex-col gap-1 transition-colors hover:bg-gray-50/30 ${!isCurrentMonth ? 'opacity-40' : ''}`}>
-                  <div className="flex justify-end mb-1">
-                    <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isDayToday ? 'bg-black text-white' : 'text-gray-500'}`}>
-                      {format(day, 'd')}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 overflow-y-auto no-scrollbar max-h-[80px]">
-                    {dayTasks.map(task => (
-                      <div key={task.id} className={`text-[10px] px-1.5 py-1 rounded truncate font-medium ${task.completada ? 'bg-gray-100 text-gray-400 line-through' : 'bg-gray-100 text-gray-800'}`}>
-                        {task.titulo}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
+      <TaskModal task={selectedTask} isOpen={!!selectedTask} onClose={() => setSelectedTask(null)} />
       <BottomTabBar />
     </div>
   );

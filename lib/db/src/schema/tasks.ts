@@ -8,6 +8,7 @@ export const tasksTable = pgTable("tasks", {
   titulo: text("titulo").notNull(),
   descripcion: text("descripcion"),
   fechaVencimiento: text("fecha_vencimiento"), 
+  horaInicio: text("hora_inicio"), // <-- NUEVO
   horaVencimiento: text("hora_vencimiento"), 
   fechaNotificacion: text("fecha_notificacion"), 
   horaNotificacion: text("hora_notificacion"), 
@@ -16,8 +17,8 @@ export const tasksTable = pgTable("tasks", {
   links: jsonb("links").$type<string[]>().default([]), 
   notificaciones: jsonb("notificaciones").$type<string[]>().default([]), 
   completada: boolean("completada").notNull().default(false),
-  googleEventId: text("google_event_id"), // <-- NUEVO
-  qstashMessageId: text("qstash_message_id"), // <-- NUEVO
+  googleEventId: text("google_event_id"),
+  qstashMessageId: text("qstash_message_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(), 
 });
