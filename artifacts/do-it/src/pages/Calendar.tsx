@@ -1,15 +1,15 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useGetTasks, useGetPreferences, useCreateTask, getGetTasksQueryKey, Task } from '@workspace/api-client-react';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Plus, ChevronDown } from 'lucide-react';
 import { useIsMobile } from '../hooks/use-mobile';
 import { useQueryClient } from '@tanstack/react-query';
 import { TaskModal } from '../components/TaskModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Calendar as DayPickerCalendar } from "@/components/ui/calendar";
 
 // FullCalendar Imports
@@ -29,7 +29,20 @@ export default function Calendar() {
   const calendarRef = useRef<FullCalendar>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentView, setCurrentView] = useState(isMobile ? 'timeGridDay' : 'timeGridWeek');
+  const [currentView, setCurrentView] = useState('timeGridWeek');
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  // Forzar la vista correcta cuando se detecta si es móvil o PC
+  useEffect(() => {
+    if (calendarRef.current) {
+      const api = calendarRef.current.getApi();
+      const targetView = isMobile ? 'timeGridDay' : 'timeGridWeek';
+      if (api.view.type !== targetView) {
+        api.changeView(targetView);
+        setCurrentView(targetView);
+      }
+    }
+  }, [isMobile]);
 
   const handleGoogleConnect = async () => {
     if (!user) return;
@@ -132,13 +145,13 @@ export default function Calendar() {
             )}
           </div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-6">
+              <span className="text-xl font-semibold capitalize text-gray-900">{format(currentDate, 'MMMM yyyy', { locale: es })}</span>
               <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
                 <button onClick={() => calendarRef.current?.getApi().prev()} className="p-1.5 hover:bg-gray-50 rounded-lg transition-colors"><ChevronLeft className="w-4 h-4"/></button>
                 <button onClick={() => calendarRef.current?.getApi().today()} className="px-3 py-1.5 text-sm font-medium hover:bg-gray-50 rounded-lg transition-colors">Hoy</button>
                 <button onClick={() => calendarRef.current?.getApi().next()} className="p-1.5 hover:bg-gray-50 rounded-lg transition-colors"><ChevronRight className="w-4 h-4"/></button>
               </div>
-              <span className="text-lg font-semibold ml-4 capitalize text-gray-900">{format(currentDate, 'MMMM yyyy', { locale: es })}</span>
             </div>
             <div className="flex items-center gap-3">
               <Select value={currentView} onValueChange={(v) => { setCurrentView(v); calendarRef.current?.getApi().changeView(v); }}>
@@ -148,7 +161,7 @@ export default function Calendar() {
                   <SelectItem value="timeGridWeek">Semana</SelectItem>
                 </SelectContent>
               </Select>
-              <button onClick={handleCreateTask} className="bg-black text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm flex items-center gap-2 hover:bg-gray-800 transition-colors"><Plus className="w-4 h-4"/> Nueva tarea</button>
+              <button onClick={handleCreateTask} className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"><Plus className="w-5 h-5"/></button>
             </div>
           </div>
         </div>
@@ -164,20 +177,34 @@ export default function Calendar() {
             )}
           </div>
           <div className="flex items-center justify-between">
-            <Popover>
-              <PopoverTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium shadow-sm flex items-center gap-2 text-gray-900">
-                <CalendarIcon className="w-4 h-4 text-gray-500"/> {format(currentDate, 'MMM yyyy', { locale: es })}
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 rounded-2xl shadow-xl border-gray-100">
-                <DayPickerCalendar mode="single" selected={currentDate} onSelect={(d) => { if(d) calendarRef.current?.getApi().gotoDate(d); }} />
-              </PopoverContent>
-            </Popover>
-            <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
-              <button onClick={() => calendarRef.current?.getApi().prev()} className="p-1.5 hover:bg-gray-50 rounded-lg"><ChevronLeft className="w-4 h-4"/></button>
-              <button onClick={() => calendarRef.current?.getApi().today()} className="px-3 py-1.5 text-sm font-medium hover:bg-gray-50 rounded-lg">Hoy</button>
-              <button onClick={() => calendarRef.current?.getApi().next()} className="p-1.5 hover:bg-gray-50 rounded-lg"><ChevronRight className="w-4 h-4"/></button>
+            <div className="flex items-center gap-2">
+              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                <SheetTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium shadow-sm flex items-center gap-2 text-gray-900">
+                  {format(currentDate, 'MMM yyyy', { locale: es })} <ChevronDown className="w-4 h-4 text-gray-500"/>
+                </SheetTrigger>
+                <SheetContent side="top" className="p-6 rounded-b-3xl h-auto max-h-[70vh] overflow-y-auto [&>button]:hidden">
+                  <div className="flex justify-center w-full">
+                    <DayPickerCalendar 
+                      mode="single" 
+                      selected={currentDate} 
+                      onSelect={(d) => { 
+                        if(d) { 
+                          calendarRef.current?.getApi().gotoDate(d); 
+                          setIsSheetOpen(false); 
+                        } 
+                      }} 
+                      className="w-full max-w-sm"
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+                <button onClick={() => calendarRef.current?.getApi().prev()} className="p-1 hover:bg-gray-50 rounded-lg"><ChevronLeft className="w-4 h-4"/></button>
+                <button onClick={() => calendarRef.current?.getApi().today()} className="px-2 py-1 text-sm font-medium hover:bg-gray-50 rounded-lg">Hoy</button>
+                <button onClick={() => calendarRef.current?.getApi().next()} className="p-1 hover:bg-gray-50 rounded-lg"><ChevronRight className="w-4 h-4"/></button>
+              </div>
             </div>
-            <button onClick={handleCreateTask} className="bg-black text-white w-[38px] h-[38px] flex items-center justify-center rounded-xl shadow-sm hover:bg-gray-800 transition-colors"><Plus className="w-5 h-5"/></button>
+            <button onClick={handleCreateTask} className="bg-black text-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"><Plus className="w-5 h-5"/></button>
           </div>
         </div>
 
@@ -193,21 +220,31 @@ export default function Calendar() {
               ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView={currentView}
-              headerToolbar={false} // Desactivamos la cabecera nativa
+              headerToolbar={false}
               locale={es}
               firstDay={prefs?.inicioSemana === 'domingo' ? 0 : 1}
               events={events}
               selectable={true}
               selectMirror={true}
-              dayMaxEvents={false} // Permite que la fila de "todo el día" crezca sin scroll
+              dayMaxEvents={false}
               nowIndicator={true}
               slotMinTime="06:00:00"
               slotMaxTime="24:00:00"
-              allDayText="" // Quitamos el texto
+              allDayText=""
               select={handleDateSelect}
               eventClick={(info) => setSelectedTask(info.event.extendedProps.task)}
               datesSet={(arg) => setCurrentDate(arg.view.currentStart)}
               height="100%"
+              dayHeaderContent={(args) => {
+                const dayName = format(args.date, 'EEEE', { locale: es }).toUpperCase();
+                const dayNumber = format(args.date, 'd');
+                return (
+                  <div className="flex flex-col items-center justify-center py-1">
+                    <span className="text-[10px] font-semibold tracking-wider opacity-80">{dayName}</span>
+                    <span className="text-xl font-bold mt-0.5">{dayNumber}</span>
+                  </div>
+                );
+              }}
             />
           </div>
         )}

@@ -181,92 +181,6 @@
   border: none !important;
 }
 
-/* FullCalendar Apple Minimalist Overrides */
-.fc {
-  --fc-border-color: #F5F5F5;
-  --fc-button-bg-color: #FFFFFF;
-  --fc-button-border-color: #E5E7EB;
-  --fc-button-text-color: #111111;
-  --fc-button-hover-bg-color: #F9FAFB;
-  --fc-button-hover-border-color: #E5E7EB;
-  --fc-button-active-bg-color: #111111;
-  --fc-button-active-border-color: #111111;
-  --fc-event-bg-color: #111111;
-  --fc-event-border-color: #111111;
-  --fc-today-bg-color: #FAFAFA;
-  --fc-now-indicator-color: #111111;
-  font-family: 'Inter', sans-serif;
-}
-.fc-header-toolbar {
-  margin-bottom: 1.5rem !important;
-}
-.fc-toolbar-title {
-  font-size: 1.25rem !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.025em !important;
-  text-transform: capitalize;
-}
-.fc-button {
-  border-radius: 8px !important;
-  font-weight: 500 !important;
-  text-transform: capitalize !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-  transition: all 0.2s !important;
-}
-.fc-button-primary:not(:disabled).fc-button-active, .fc-button-primary:not(:disabled):active {
-  color: #FFFFFF !important;
-}
-.fc-col-header-cell {
-  padding: 12px 0 !important;
-  font-weight: 500 !important;
-  color: #A3A3A3 !important;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-}
-.fc-event {
-  border-radius: 6px !important;
-  padding: 2px 4px !important;
-  border: none !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-  transition: transform 0.1s !important;
-}
-.fc-event:hover {
-  transform: scale(1.02);
-  z-index: 10 !important;
-}
-.fc-timegrid-event .fc-event-main {
-  padding: 2px !important;
-  font-size: 0.75rem !important;
-  font-weight: 500 !important;
-}
-.fc-daygrid-event {
-  font-size: 0.75rem !important;
-  font-weight: 500 !important;
-  margin: 1px 4px !important;
-}
-.fc-timegrid-slot-label-cushion {
-  font-size: 0.75rem !important;
-  color: #A3A3A3 !important;
-  font-weight: 500 !important;
-}
-.fc-theme-standard td, .fc-theme-standard th {
-  border-color: #F5F5F5 !important;
-}
-
-/* Estilos para inputs nativos de fecha y hora */
-.pill-input {
-  @apply bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none transition-shadow w-full max-w-[140px] cursor-pointer;
-}
-.pill-input::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-}
-.pill-input::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
-
 /* Estilos para inputs nativos de fecha y hora */
 .pill-input {
   @apply bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none transition-shadow w-full max-w-[140px] cursor-pointer shadow-sm;
@@ -278,6 +192,15 @@
 }
 .pill-input::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
+}
+
+/* Ocultar Scrollbars globalmente en el calendario */
+.fc-scroller::-webkit-scrollbar {
+  display: none !important;
+}
+.fc-scroller {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 /* FullCalendar Apple Minimalist Overrides */
@@ -293,13 +216,12 @@
   display: none !important;
 }
 
-/* Estilo de los eventos (Linear Style) */
+/* Estilo de los eventos (Negro sólido) */
 .fc-event {
   border-radius: 4px !important;
   border: none !important;
-  border-left: 3px solid #111111 !important;
-  background-color: #F5F5F5 !important;
-  color: #111111 !important;
+  background-color: #111111 !important;
+  color: #FFFFFF !important;
   box-shadow: none !important;
   transition: transform 0.1s !important;
 }
@@ -309,7 +231,8 @@
 }
 .fc-event.completed-event {
   opacity: 0.5;
-  border-left-color: #A3A3A3 !important;
+  background-color: #F5F5F5 !important;
+  color: #A3A3A3 !important;
 }
 .fc-timegrid-event .fc-event-main {
   padding: 2px 4px !important;
@@ -323,42 +246,41 @@
   padding: 2px 4px !important;
 }
 
-/* Línea de la hora actual (Negra punteada) */
+/* Línea de la hora actual (Negra sólida cruzando toda la pantalla) */
 .fc-timegrid-now-indicator-line {
   border-color: #111111 !important;
-  border-style: dashed !important;
+  border-style: solid !important;
   border-width: 1px 0 0 !important;
+  width: 3000px !important;
+  left: -1000px !important;
+  z-index: 50 !important;
+  pointer-events: none !important;
 }
 .fc-timegrid-now-indicator-arrow {
   border-color: transparent transparent transparent #111111 !important;
   border-width: 5px 0 5px 6px !important;
   margin-top: -5px !important;
+  z-index: 51 !important;
+}
+/* Evitar que la línea infinita rompa el layout horizontal */
+.fc-scroller-liquid-absolute {
+  overflow-x: hidden !important;
 }
 
-/* Cabecera de los días (Día actual con círculo negro) */
+/* Cabecera de los días (Fondo gris, Hoy en negro) */
 .fc-col-header-cell {
-  padding: 12px 0 !important;
-  font-weight: 500 !important;
-  color: #A3A3A3 !important;
-  border-top: none !important;
-  border-left: none !important;
-  border-right: none !important;
+  background-color: #F9FAFB !important; /* bg-gray-50 */
+  color: #111111 !important;
+  border: none !important;
+  border-right: 1px solid #FFFFFF !important; /* Pequeña separación blanca entre días */
 }
-.fc-col-header-cell-cushion {
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  padding: 4px !important;
-}
-.fc-day-today .fc-col-header-cell-cushion {
+.fc-day-today.fc-col-header-cell {
   background-color: #111111 !important;
   color: #FFFFFF !important;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+}
+.fc-col-header-cell-cushion {
+  padding: 8px !important;
+  width: 100%;
 }
 
 /* Limpieza de bordes */
