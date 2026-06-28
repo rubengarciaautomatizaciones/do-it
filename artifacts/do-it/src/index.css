@@ -253,3 +253,16 @@
 .fc-theme-standard td, .fc-theme-standard th {
   border-color: #F5F5F5 !important;
 }
+
+/* Estilos para inputs nativos de fecha y hora */
+.pill-input {
+  @apply bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none transition-shadow w-full max-w-[140px] cursor-pointer;
+}
+.pill-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.pill-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}

@@ -23,6 +23,7 @@ const mapTask = (t: any) => ({
   titulo: t.titulo,
   descripcion: t.descripcion ?? null,
   fechaVencimiento: t.fechaVencimiento ?? null,
+  fechaFin: t.fechaFin ?? null,
   horaInicio: t.horaInicio ?? null,
   horaVencimiento: t.horaVencimiento ?? null,
   fechaNotificacion: t.fechaNotificacion ?? null,
@@ -72,11 +73,12 @@ router.post("/tasks", async (req, res) => {
   const parsed = CreateTaskBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
 
-  const { titulo, userId, descripcion, fechaVencimiento, horaInicio, horaVencimiento, links, notificaciones } = parsed.data;
+  const { titulo, userId, descripcion, fechaVencimiento, fechaFin, horaInicio, horaVencimiento, links, notificaciones } = parsed.data;
   const [task] = await db.insert(tasksTable).values({ 
     titulo, userId, 
     descripcion: descripcion ?? null, 
     fechaVencimiento: fechaVencimiento ?? null,
+    fechaFin: fechaFin ?? null,
     horaInicio: horaInicio ?? null, // <-- NUEVO
     horaVencimiento: horaVencimiento ?? null,
     proyecto: null,
@@ -192,6 +194,7 @@ router.patch("/tasks/:id", async (req, res) => {
     ...(updates.titulo !== undefined && { titulo: updates.titulo }),
     ...(updates.descripcion !== undefined && { descripcion: updates.descripcion }),
     ...(updates.fechaVencimiento !== undefined && { fechaVencimiento: updates.fechaVencimiento }),
+    ...(updates.fechaFin !== undefined && { fechaFin: updates.fechaFin }), // <-- NUEVO
     ...(updates.horaVencimiento !== undefined && { horaVencimiento: updates.horaVencimiento }),
     ...(updates.horaInicio !== undefined && { horaInicio: updates.horaInicio }),
     ...(updates.fechaNotificacion !== undefined && { fechaNotificacion: updates.fechaNotificacion }),

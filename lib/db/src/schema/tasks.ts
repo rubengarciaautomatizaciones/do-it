@@ -8,6 +8,7 @@ export const tasksTable = pgTable("tasks", {
   titulo: text("titulo").notNull(),
   descripcion: text("descripcion"),
   fechaVencimiento: text("fecha_vencimiento"), 
+  fechaFin: text("fecha_fin"),
   horaInicio: text("hora_inicio"), // <-- NUEVO
   horaVencimiento: text("hora_vencimiento"), 
   fechaNotificacion: text("fecha_notificacion"), 

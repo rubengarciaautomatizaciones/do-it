@@ -43,6 +43,8 @@ export interface Task {
   /** @nullable */
   fechaVencimiento?: string | null;
   /** @nullable */
+  fechaFin?: string | null;
+  /** @nullable */
   horaInicio?: string | null;
   /** @nullable */
   horaVencimiento?: string | null;
@@ -69,6 +71,8 @@ export interface TaskInput {
   descripcion?: string | null;
   /** @nullable */
   fechaVencimiento?: string | null;
+  /** @nullable */
+  fechaFin?: string | null;
   /** @nullable */
   horaInicio?: string | null;
   /** @nullable */
@@ -98,6 +102,8 @@ export interface TaskUpdate {
   descripcion?: string | null;
   /** @nullable */
   fechaVencimiento?: string | null;
+  /** @nullable */
+  fechaFin?: string | null;
   /** @nullable */
   horaInicio?: string | null;
   /** @nullable */
