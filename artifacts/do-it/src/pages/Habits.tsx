@@ -72,7 +72,7 @@ function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => 
             key="trash"
             initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsConfirming(true); }}
-            className="text-gray-400 hover:text-red-500 p-2 rounded-lg transition-colors"
+            className="text-gray-400 hover:text-black p-2 rounded-lg transition-colors"
           >
             <Trash2 className="w-5 h-5" />
           </motion.button>
@@ -434,7 +434,7 @@ export default function Habits() {
                     <p className={`text-[15px] leading-tight truncate ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
                       {habit.nombre}
                     </p>
-                    {habit.currentStreak > 2 && <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">🔥 {habit.currentStreak}</span>}
+                    {habit.currentStreak > 2 && <span className="text-xs bg-gray-100 text-black px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5"><Zap className="w-3 h-3 fill-current" /> {habit.currentStreak}</span>}
                   </div>
                 </motion.div>
               );

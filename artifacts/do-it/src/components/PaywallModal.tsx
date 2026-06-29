@@ -47,7 +47,7 @@ export function PaywallModal({ isOpen, onClose }: PaywallModalProps) {
               Mensual
             </button>
             <button onClick={() => setIsAnnual(true)} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${isAnnual ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}>
-              Anual <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full">-40%</span>
+              Anual <span className="bg-black text-white text-[10px] px-2 py-0.5 rounded-full">-40%</span>
             </button>
           </div>
 

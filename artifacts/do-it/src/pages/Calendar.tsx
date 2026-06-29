@@ -9,10 +9,9 @@ import { useIsMobile } from '../hooks/use-mobile';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { TaskModal } from '../components/TaskModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from 'framer-motion';
 
-// FullCalendar Imports
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -26,7 +25,6 @@ export default function Calendar() {
   const { data: prefs } = useGetPreferences();
   const createTask = useCreateTask();
 
-  // Fetch Google Calendar Events
   const { data: gcEvents } = useQuery({
     queryKey: ['googleCalendarEvents', user?.id],
     queryFn: async () => {
@@ -42,12 +40,11 @@ export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('timeGridWeek');
 
-  // Estados para animaciones de Swipe
   const [slideConfig, setSlideConfig] = useState({ x: 0, opacity: 1 });
   const [miniSlideConfig, setMiniSlideConfig] = useState({ x: 0, opacity: 1 });
 
   const [miniCalDate, setMiniCalDate] = useState(new Date());
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (calendarRef.current) {
@@ -108,16 +105,13 @@ export default function Calendar() {
     return [...doItEvents, ...googleEvents];
   }, [tasks, gcEvents]);
 
-  // Lógica de Animación y Swipe (Calendario Principal)
   const slideCalendar = (direction: 1 | -1) => {
     setSlideConfig({ x: direction * -20, opacity: 0 });
     setTimeout(() => {
       if (direction === 1) calendarRef.current?.getApi().next();
       else calendarRef.current?.getApi().prev();
       setSlideConfig({ x: direction * 20, opacity: 0 });
-      setTimeout(() => {
-        setSlideConfig({ x: 0, opacity: 1 });
-      }, 50);
+      setTimeout(() => setSlideConfig({ x: 0, opacity: 1 }), 50);
     }, 150);
   };
 
@@ -129,15 +123,12 @@ export default function Calendar() {
     if (touchEndX - touchStartX > 50) slideCalendar(-1);
   };
 
-  // Lógica de Animación y Swipe (Mini Calendario)
   const slideMiniCalendar = (direction: 1 | -1) => {
     setMiniSlideConfig({ x: direction * -20, opacity: 0 });
     setTimeout(() => {
       setMiniCalDate(prev => direction === 1 ? addMonths(prev, 1) : subMonths(prev, 1));
       setMiniSlideConfig({ x: direction * 20, opacity: 0 });
-      setTimeout(() => {
-        setMiniSlideConfig({ x: 0, opacity: 1 });
-      }, 50);
+      setTimeout(() => setMiniSlideConfig({ x: 0, opacity: 1 }), 50);
     }, 150);
   };
 
@@ -202,7 +193,7 @@ export default function Calendar() {
               <div key={i} className="aspect-square flex items-center justify-center">
                 {d && (
                   <button 
-                    onClick={() => { calendarRef.current?.getApi().gotoDate(d); setIsSheetOpen(false); }}
+                    onClick={() => { calendarRef.current?.getApi().gotoDate(d); setIsPopoverOpen(false); }}
                     className={`w-10 h-10 rounded-full text-base font-medium flex items-center justify-center transition-colors ${format(d, 'yyyy-MM-dd') === format(currentDate, 'yyyy-MM-dd') ? 'bg-black text-white' : 'text-gray-700 hover:bg-gray-100'}`}
                   >
                     {d.getDate()}
@@ -233,15 +224,15 @@ export default function Calendar() {
             )}
           </div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <span className="text-xl font-semibold capitalize text-gray-900 w-40">{format(currentDate, 'MMMM yyyy', { locale: es })}</span>
-              <button onClick={() => { calendarRef.current?.getApi().today(); setCurrentDate(new Date()); }} className="px-3 py-1.5 text-sm font-medium bg-white border border-gray-200 shadow-sm hover:bg-gray-50 rounded-lg transition-colors">Hoy</button>
-            </div>
-            <div className="flex items-center gap-3">
               <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
                 <button onClick={() => slideCalendar(-1)} className="p-1.5 hover:bg-gray-50 rounded-lg transition-colors"><ChevronLeft className="w-4 h-4"/></button>
+                <button onClick={() => { calendarRef.current?.getApi().today(); setCurrentDate(new Date()); }} className="px-3 py-1.5 text-sm font-medium hover:bg-gray-50 rounded-lg transition-colors">Hoy</button>
                 <button onClick={() => slideCalendar(1)} className="p-1.5 hover:bg-gray-50 rounded-lg transition-colors"><ChevronRight className="w-4 h-4"/></button>
               </div>
+            </div>
+            <div className="flex items-center gap-3">
               <Select value={currentView} onValueChange={(v) => { setCurrentView(v); calendarRef.current?.getApi().changeView(v); }}>
                 <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-4 text-sm font-medium shadow-sm w-auto"><SelectValue/></SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -265,17 +256,14 @@ export default function Calendar() {
             )}
           </div>
           <div className="flex items-center justify-between relative">
-            <div className="flex items-center gap-2">
-              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium shadow-sm flex items-center gap-2 text-gray-900">
-                  {format(currentDate, 'MMM yyyy', { locale: es })} <ChevronDown className="w-4 h-4 text-gray-500"/>
-                </SheetTrigger>
-                <SheetContent side="top" className="p-6 rounded-b-3xl h-auto max-h-[70vh] overflow-y-auto [&>button]:hidden">
-                  {renderMiniCalendar()}
-                </SheetContent>
-              </Sheet>
-              <button onClick={() => { calendarRef.current?.getApi().today(); setCurrentDate(new Date()); }} className="bg-white border border-gray-200 rounded-xl h-[38px] px-4 text-sm font-medium shadow-sm hover:bg-gray-50 text-gray-900">Hoy</button>
-            </div>
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+              <PopoverTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium shadow-sm flex items-center gap-2 text-gray-900">
+                {format(currentDate, 'MMM yyyy', { locale: es })} <ChevronDown className="w-4 h-4 text-gray-500"/>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[calc(100vw-2rem)] p-4 rounded-2xl shadow-xl border-gray-100 mt-2">
+                {renderMiniCalendar()}
+              </PopoverContent>
+            </Popover>
             <button onClick={handleCreateTask} className="bg-black text-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"><Plus className="w-5 h-5"/></button>
           </div>
         </div>
@@ -306,7 +294,7 @@ export default function Calendar() {
               slotLabelInterval="01:00:00"
               snapDuration="00:15:00"
               selectLongPressDelay={1000}
-              fixedWeekCount={false} // <-- Evita mostrar 2 semanas del mes siguiente
+              fixedWeekCount={false}
               allDayText=""
               select={handleDateSelect}
               eventClick={(info) => {
@@ -320,13 +308,17 @@ export default function Calendar() {
               height="100%"
               dayHeaderContent={(args) => {
                 const dayName = format(args.date, 'EEEE', { locale: es }).toUpperCase();
-                const dayNumber = format(args.date, 'd');
                 const isMonthView = args.view.type === 'dayGridMonth';
 
+                if (isMonthView) {
+                  return <span className="text-[10px] font-semibold tracking-wider opacity-60 py-2">{dayName}</span>;
+                }
+
+                const dayNumber = format(args.date, 'd');
                 return (
-                  <div className={`flex flex-col items-center justify-center ${isMonthView ? 'py-3' : 'py-2'}`}>
-                    <span className={`day-name text-[10px] font-semibold tracking-wider ${isMonthView ? 'opacity-100' : 'opacity-60'}`}>{dayName}</span>
-                    {!isMonthView && <span className="text-xl font-bold mt-0.5">{dayNumber}</span>}
+                  <div className="flex flex-col items-center justify-center py-2">
+                    <span className="day-name text-[10px] font-semibold tracking-wider opacity-60">{dayName}</span>
+                    <span className="text-xl font-bold mt-0.5">{dayNumber}</span>
                   </div>
                 );
               }}
