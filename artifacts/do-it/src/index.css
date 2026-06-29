@@ -194,7 +194,7 @@
   border-top: none !important; /* <-- Fulmina la línea de arriba */
   border-left: none !important;
   border-right: 1px solid #FFFFFF !important;
-  border-bottom: 1px solid #F5F5F5 !important; /* <-- Deja solo la línea de abajo */
+  border-bottom: 1px solid #FFFFFF !important; /* <-- Deja solo la línea de abajo */
 }
 
 /* REDONDEAR EL PRIMER DÍA (Esquina superior izquierda) */
