@@ -248,7 +248,7 @@ thead tr th:first-child {
 
 /* 3. Asegurar que la única línea divisoria esté SOLO debajo de los días */
 .fc-col-header-cell {
-  border-bottom: 1px solid #F5F5F5 !important;
+  border-bottom: 1px solid #FFFFFF !important;
 }
 
 .fc-timegrid-slot-minor {
