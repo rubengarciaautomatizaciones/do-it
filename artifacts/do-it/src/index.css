@@ -189,12 +189,15 @@
 .fc-col-header-cell {
   background-color: #F9FAFB !important; /* bg-gray-50 */
   color: #111111 !important;
-  border: none !important;
+
+  /* AQUÍ ESTÁ LA MAGIA PARA LAS LÍNEAS */
+  border-top: none !important; /* <-- Fulmina la línea de arriba */
+  border-left: none !important;
   border-right: 1px solid #FFFFFF !important;
+  border-bottom: 1px solid #F5F5F5 !important; /* <-- Deja solo la línea de abajo */
 }
 
 /* REDONDEAR EL PRIMER DÍA (Esquina superior izquierda) */
-/* Aplica tanto si hay eje de horas (semana) como si no (mes) */
 .fc-timegrid-axis + .fc-col-header-cell,
 .fc-daygrid-body .fc-col-header-cell:first-child,
 thead tr th:first-child {
