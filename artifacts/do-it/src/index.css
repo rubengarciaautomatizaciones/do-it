@@ -129,7 +129,7 @@
 
 /* Eventos de Do it! (Gris claro, texto negro) */
 .fc-event.doit-event {
-  background-color: #F9FAFB !important;
+  background-color: #A3A3A3 !important;
   border-left: 3px solid #111111 !important;
 }
 .fc-event.doit-event .fc-event-main,
@@ -153,9 +153,9 @@
 
 /* Eventos de Google Calendar (Blancos, borde gris) */
 .fc-event.google-event {
-  background-color: #FFFFFF !important;
-  border: 1px solid #F5F5F5 !important;
-  border-left: 3px solid #E5E7EB !important;
+  background-color: #E5E7EB !important;
+  border: none !important;
+  border-left: 3px solid #A3A3A3 !important;
 }
 .fc-event.google-event .fc-event-main,
 .fc-event.google-event .fc-event-title,
