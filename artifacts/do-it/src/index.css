@@ -225,23 +225,49 @@ thead tr th:first-child {
 /* Limpieza de bordes y horas centradas (No-Excel Look) */
 .fc-theme-standard .fc-scrollgrid {
   border: none !important;
-  border-radius: 1rem !important;
-  overflow: hidden !important;
 }
+
 .fc-theme-standard td, .fc-theme-standard th {
   border-right: none !important;
   border-left: none !important;
-  border-color: #FFFFFF !important;
+  border-color: #F5F5F5 !important;
 }
-.fc-timegrid-slot-minor { border-bottom: none !important; }
-.fc-timegrid-slot { height: 48px !important; }
-.fc-timegrid-slot-label-frame { display: flex; align-items: center; justify-content: flex-end; }
+
+/* 1. Quitar la doble línea gris entre el encabezado y el calendario */
+.fc-scrollgrid-section-header > td {
+  border-bottom: none !important;
+}
+
+/* 2. Quitar las líneas grises de la esquina superior izquierda (encima de las horas) */
+.fc-theme-standard th.fc-timegrid-axis {
+  border: none !important;
+}
+
+/* 3. Asegurar que la única línea divisoria esté SOLO debajo de los días */
+.fc-col-header-cell {
+  border-bottom: 1px solid #F5F5F5 !important;
+}
+
+.fc-timegrid-slot-minor {
+  border-bottom: none !important; /* Quita las líneas de media hora */
+}
+
+.fc-timegrid-slot {
+  height: 48px !important; /* Filas más altas */
+}
+
+.fc-timegrid-slot-label-frame {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .fc-timegrid-slot-label-cushion {
   font-size: 0.75rem !important;
   color: #A3A3A3 !important;
   font-weight: 500 !important;
   position: relative;
-  top: -24px;
+  top: -24px; /* Centra el texto en la línea */
   background: white;
   padding-right: 8px !important;
 }
