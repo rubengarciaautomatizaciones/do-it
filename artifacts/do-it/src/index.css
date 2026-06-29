@@ -233,10 +233,15 @@
   border-left: 3px solid #A3A3A3 !important;
 }
 .fc-event.google-event {
-  background-color: #F9FAFB !important; /* bg-gray-50 */
-  color: #6B7280 !important; /* text-gray-500 */
+  background-color: #FFFFFF !important;
+  color: #111111 !important;
   border: none !important;
   border-left: 3px solid #E5E7EB !important;
+}
+
+/* Eliminar el punto azul de los eventos en vista de mes */
+.fc-daygrid-event-dot {
+  display: none !important;
 }
 
 .fc-timegrid-event .fc-event-main {
@@ -285,14 +290,22 @@
 .fc-col-header-cell-cushion {
   width: 100%;
 }
+.fc-col-header-cell-cushion .day-name {
+  color: #A3A3A3;
+}
+.fc-day-today .fc-col-header-cell-cushion .day-name {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
 
 /* Limpieza de bordes y horas centradas (No-Excel Look) */
 .fc-theme-standard .fc-scrollgrid {
   border: none !important;
+  border-radius: 0 !important;
 }
 .fc-theme-standard td, .fc-theme-standard th {
   border-right: none !important;
   border-left: none !important;
+  border-color: #F5F5F5 !important;
 }
 .fc-timegrid-slot-minor {
   border-bottom: none !important; /* Quita las líneas de media hora */
