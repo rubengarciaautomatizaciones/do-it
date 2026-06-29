@@ -255,8 +255,8 @@ export default function Calendar() {
               </button>
             )}
           </div>
-          <div className="flex items-center justify-center relative">
-            {/* Grupo central: Mes y Hoy */}
+          <div className="flex items-center justify-between">
+            {/* Grupo izquierdo: Mes y Hoy */}
             <div className="flex items-center gap-2">
               <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium shadow-sm flex items-center gap-2 text-gray-900">
@@ -275,10 +275,10 @@ export default function Calendar() {
               </button>
             </div>
 
-            {/* Botón + flotando a la derecha */}
+            {/* Botón + a la derecha */}
             <button 
               onClick={handleCreateTask} 
-              className="absolute right-0 bg-black text-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"
+              className="bg-black text-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"
             >
               <Plus className="w-5 h-5"/>
             </button>
