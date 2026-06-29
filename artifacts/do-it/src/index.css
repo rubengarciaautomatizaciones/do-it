@@ -135,7 +135,7 @@
 .fc-event.doit-event .fc-event-main,
 .fc-event.doit-event .fc-event-title,
 .fc-event.doit-event .fc-event-time {
-  color: #FFFFFF !important;
+  color: #111111 !important;
 }
 
 /* Eventos Completados (Tachados) */
@@ -147,7 +147,7 @@
 .fc-event.completed-event .fc-event-main,
 .fc-event.completed-event .fc-event-title,
 .fc-event.completed-event .fc-event-time {
-  color: #FFFFFF !important;
+  color: #111111 !important;
   text-decoration: line-through !important;
 }
 
