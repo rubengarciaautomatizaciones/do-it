@@ -332,3 +332,18 @@ export const CreatePortalResponse = zod.object({
 export const DeleteAccountQueryParams = zod.object({
   "userId": zod.coerce.string()
 })
+
+
+export const GetGoogleCalendarEventsQueryParams = zod.object({
+  "userId": zod.coerce.string()
+})
+
+export const GetGoogleCalendarEventsResponseItem = zod.object({
+  "id": zod.string().optional(),
+  "title": zod.string().optional(),
+  "start": zod.string().optional(),
+  "end": zod.string().optional(),
+  "allDay": zod.boolean().optional(),
+  "isGoogleCalendar": zod.boolean().optional()
+})
+export const GetGoogleCalendarEventsResponse = zod.array(GetGoogleCalendarEventsResponseItem)

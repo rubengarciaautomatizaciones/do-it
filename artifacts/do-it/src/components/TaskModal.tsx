@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useUpdateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata, useGetTasks, getGetTasksQueryKey, Task } from '@workspace/api-client-react';
+import { useUpdateTask, useCreateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata, useGetTasks, getGetTasksQueryKey, Task } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link as LinkIcon, Plus, Mic, X, Folder, Loader2, Trash2 } from 'lucide-react';
+import { Link as LinkIcon, Plus, Mic, X, Folder, Loader2, Trash2, Check } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '../lib/supabase';
@@ -15,7 +15,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-// --- FUNCIONES AUXILIARES PARA NOTIFICACIONES ---
 function getAbsoluteNotifTime(fechaDesde: string | null, horaDesde: string | null, value: number, unit: string) {
   if (!fechaDesde || value <= 0) return { fechaNotificacion: null, horaNotificacion: null };
   const baseDate = new Date(`${fechaDesde}T${horaDesde || '00:00'}:00`);
@@ -24,10 +23,7 @@ function getAbsoluteNotifTime(fechaDesde: string | null, horaDesde: string | nul
   if (unit === 'horas') offsetMs = value * 60 * 60 * 1000;
   if (unit === 'dias') offsetMs = value * 24 * 60 * 60 * 1000;
   const notifDate = new Date(baseDate.getTime() - offsetMs);
-  return {
-    fechaNotificacion: format(notifDate, 'yyyy-MM-dd'),
-    horaNotificacion: format(notifDate, 'HH:mm')
-  };
+  return { fechaNotificacion: format(notifDate, 'yyyy-MM-dd'), horaNotificacion: format(notifDate, 'HH:mm') };
 }
 
 function getRelativeNotif(fechaDesde: string | null, horaDesde: string | null, fechaNotif: string | null, horaNotif: string | null) {
@@ -42,19 +38,12 @@ function getRelativeNotif(fechaDesde: string | null, horaDesde: string | null, f
   return { value: diffMins.toString(), unit: 'minutos' };
 }
 
-// --- COMPONENTES DE PREVISUALIZACIÓN ---
 function LinkPreview({ url, onRemove }: { url: string, onRemove: () => void }) {
   const { data, isLoading } = useGetTaskMetadata({ url });
   const hostname = new URL(url).hostname.replace('www.', '');
   return (
     <a href={url} target="_blank" rel="noreferrer" className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/link transition-all hover:shadow-md cursor-pointer block">
-      {isLoading ? (
-        <div className="w-full aspect-square bg-gray-200 animate-pulse flex items-center justify-center shrink-0"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
-      ) : data?.image ? (
-        <div className="w-full aspect-square bg-gray-200 relative overflow-hidden shrink-0"><img src={data.image} alt="preview" className="absolute inset-0 w-full h-full object-cover" /></div>
-      ) : (
-        <div className="w-full aspect-square bg-gray-100 flex items-center justify-center shrink-0"><LinkIcon className="w-8 h-8 text-gray-300" /></div>
-      )}
+      {isLoading ? <div className="w-full aspect-square bg-gray-200 animate-pulse flex items-center justify-center shrink-0"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div> : data?.image ? <div className="w-full aspect-square bg-gray-200 relative overflow-hidden shrink-0"><img src={data.image} alt="preview" className="absolute inset-0 w-full h-full object-cover" /></div> : <div className="w-full aspect-square bg-gray-100 flex items-center justify-center shrink-0"><LinkIcon className="w-8 h-8 text-gray-300" /></div>}
       <div className="p-3 bg-white flex-1">
         <p className="text-sm font-medium text-gray-900 line-clamp-1">{data?.title || url}</p>
         {data?.description && <p className="text-xs text-gray-500 line-clamp-2 mt-1">{data.description}</p>}
@@ -73,13 +62,7 @@ function AttachmentPreview({ att, onRemove }: { att: any, onRemove: () => void }
     <a href={att.fileUrl} target="_blank" rel="noreferrer" className="flex flex-col bg-gray-50 rounded-xl border border-gray-100 overflow-hidden relative group/file transition-all hover:shadow-md cursor-pointer block">
       <div className="w-full aspect-square bg-gray-100 relative flex items-center justify-center overflow-hidden shrink-0">
         {isImage && <img src={att.fileUrl} alt={att.fileName} className="absolute inset-0 w-full h-full object-cover" />}
-        {isPdf && (
-          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-white">
-            <Document file={att.fileUrl} loading={<Loader2 className="w-6 h-6 animate-spin text-gray-300" />} error={<Plus className="w-8 h-8 text-gray-300" />}>
-              <Page pageNumber={1} width={250} renderTextLayer={false} renderAnnotationLayer={false} />
-            </Document>
-          </div>
-        )}
+        {isPdf && <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-white"><Document file={att.fileUrl} loading={<Loader2 className="w-6 h-6 animate-spin text-gray-300" />} error={<Plus className="w-8 h-8 text-gray-300" />}><Page pageNumber={1} width={250} renderTextLayer={false} renderAnnotationLayer={false} /></Document></div>}
         {isAudio && <Mic className="w-8 h-8 text-gray-300" />}
         {!isImage && !isPdf && !isAudio && <Plus className="w-8 h-8 text-gray-300" />}
       </div>
@@ -115,31 +98,20 @@ function DeleteConfirmButton({ onDelete }: { onDelete: () => void }) {
   );
 }
 
-function EditableTitle({ task }: { task: Task }) {
-  const [localTitle, setLocalTitle] = useState(task.titulo);
-  const updateTask = useUpdateTask();
-  const queryClient = useQueryClient();
-  useEffect(() => { setLocalTitle(task.titulo); }, [task.titulo]);
-  const handleBlur = () => {
-    if (localTitle.trim() && localTitle !== task.titulo) {
-      updateTask.mutate({ id: task.id, data: { titulo: localTitle.trim() } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
-    } else {
-      setLocalTitle(task.titulo);
-    }
-  };
-  return <input value={localTitle} onChange={(e) => setLocalTitle(e.target.value)} onBlur={handleBlur} className="text-2xl font-semibold text-gray-900 bg-transparent border-none focus:ring-0 p-0 w-full outline-none" />;
-}
-
-export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen: boolean, onClose: () => void }) {
+export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | null, isOpen: boolean, onClose: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const addAttachment = useAddTaskAttachment();
   const { data: allTasks } = useGetTasks();
 
-  const currentTask = allTasks?.find(t => t.id === task?.id) || task;
+  // ESTADO LOCAL (MODO BORRADOR)
+  const [localTask, setLocalTask] = useState<Partial<Task> | null>(null);
+  const [notifValue, setNotifValue] = useState<string>('');
+  const [notifUnit, setNotifUnit] = useState<string>('minutos');
 
   const [isAddingLink, setIsAddingLink] = useState(false);
   const [newLink, setNewLink] = useState("");
@@ -147,31 +119,105 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
   const [newProjectName, setNewProjectName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [notifValue, setNotifValue] = useState<string>('');
-  const [notifUnit, setNotifUnit] = useState<string>('minutos');
-
+  // Sincronizar prop con estado local al abrir
   useEffect(() => {
-    if (currentTask?.fechaNotificacion) {
-      const rel = getRelativeNotif(currentTask.fechaVencimiento, currentTask.horaInicio, currentTask.fechaNotificacion, currentTask.horaNotificacion);
-      setNotifValue(rel.value);
-      setNotifUnit(rel.unit);
-    } else {
-      setNotifValue('');
-      setNotifUnit('minutos');
+    if (isOpen && task) {
+      const existingTask = allTasks?.find(t => t.id === task.id);
+      const taskData = existingTask || task;
+      setLocalTask(taskData);
+
+      if (taskData.fechaNotificacion) {
+        const rel = getRelativeNotif(taskData.fechaVencimiento || null, taskData.horaInicio || null, taskData.fechaNotificacion, taskData.horaNotificacion || null);
+        setNotifValue(rel.value);
+        setNotifUnit(rel.unit);
+      } else {
+        setNotifValue('');
+        setNotifUnit('minutos');
+      }
     }
-  }, [currentTask?.fechaNotificacion, currentTask?.horaNotificacion, currentTask?.fechaVencimiento, currentTask?.horaInicio]);
+  }, [isOpen, task, allTasks]);
 
-  if (!currentTask) return null;
+  if (!localTask) return null;
 
-  const handleDescriptionChange = (html: string) => updateTask.mutate({ id: currentTask.id, data: { descripcion: html } });
+  const updateLocal = (updates: Partial<Task>) => setLocalTask(prev => ({ ...prev, ...updates }));
+
+  // GUARDAR (TICK)
+  const handleSave = () => {
+    if (!user) return;
+    const isNew = !localTask.id;
+    const isEmpty = !localTask.titulo || localTask.titulo.trim() === "" || localTask.titulo === "Nueva tarea";
+
+    if (isNew && isEmpty) {
+      onClose(); // Descartar si está vacío
+      return;
+    }
+
+    const payload: any = {
+      titulo: localTask.titulo || "Sin título",
+      descripcion: localTask.descripcion,
+      fechaVencimiento: localTask.fechaVencimiento,
+      fechaFin: (localTask as any).fechaFin,
+      horaInicio: localTask.horaInicio,
+      horaVencimiento: localTask.horaVencimiento,
+      fechaNotificacion: localTask.fechaNotificacion,
+      horaNotificacion: localTask.horaNotificacion,
+      proyecto: localTask.proyecto,
+      links: localTask.links,
+      completada: localTask.completada
+    };
+
+    if (isNew) {
+      createTask.mutate({ data: { ...payload, userId: user.id } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    } else {
+      updateTask.mutate({ id: localTask.id!, data: payload }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    }
+    onClose();
+  };
+
+  const handleDelete = () => {
+    if (localTask.id) {
+      deleteTask.mutate({ id: localTask.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    }
+    onClose();
+  };
+
+  const handleDesdeChange = (newFecha: string | null, newHora: string | null) => {
+    const updates: any = { fechaVencimiento: newFecha, horaInicio: newHora };
+    if (newFecha && (!(localTask as any).fechaFin || (localTask as any).fechaFin === localTask.fechaVencimiento)) updates.fechaFin = newFecha;
+    if (newHora && newHora !== localTask.horaInicio) {
+      const [hours, minutes] = newHora.split(':').map(Number);
+      const endDate = new Date();
+      endDate.setHours(hours + 1, minutes);
+      updates.horaVencimiento = format(endDate, 'HH:mm');
+    }
+    const numVal = parseInt(notifValue);
+    if (!isNaN(numVal) && numVal > 0) {
+      const absTime = getAbsoluteNotifTime(newFecha, newHora, numVal, notifUnit);
+      updates.fechaNotificacion = absTime.fechaNotificacion;
+      updates.horaNotificacion = absTime.horaNotificacion;
+    }
+    updateLocal(updates);
+  };
+
+  const handleNotifChange = (val: string, unit: string) => {
+    setNotifValue(val);
+    setNotifUnit(unit);
+    const numVal = parseInt(val);
+    if (isNaN(numVal) || numVal <= 0) {
+      updateLocal({ fechaNotificacion: null, horaNotificacion: null });
+      return;
+    }
+    const absTime = getAbsoluteNotifTime(localTask.fechaVencimiento || null, localTask.horaInicio || null, numVal, unit);
+    updateLocal(absTime);
+  };
 
   const handleProjectSelect = (val: string) => {
     if (val === "__new__") setIsCreatingProject(true);
-    else updateTask.mutate({ id: currentTask.id, data: { proyecto: val === "none" ? null : val } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    else updateLocal({ proyecto: val === "none" ? null : val });
   };
 
   const saveNewProject = () => {
-    if (newProjectName.trim()) updateTask.mutate({ id: currentTask.id, data: { proyecto: newProjectName.trim() } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    if (newProjectName.trim()) updateLocal({ proyecto: newProjectName.trim() });
     setIsCreatingProject(false);
     setNewProjectName("");
   };
@@ -180,75 +226,22 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
     e.preventDefault();
     if (!newLink.trim()) return;
     const formattedLink = newLink.trim().startsWith('http') ? newLink.trim() : `https://${newLink.trim()}`;
-    const updatedLinks = [...(currentTask.links || []), formattedLink];
-    updateTask.mutate({ id: currentTask.id, data: { links: updatedLinks } }, { onSuccess: () => { setIsAddingLink(false); setNewLink(""); queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }); } });
+    updateLocal({ links: [...(localTask.links || []), formattedLink] });
+    setIsAddingLink(false); setNewLink("");
   };
 
-  const removeLink = (linkToRemove: string) => {
-    const newLinks = currentTask.links?.filter(l => l !== linkToRemove) || [];
-    updateTask.mutate({ id: currentTask.id, data: { links: newLinks } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
-  };
-
-  const removeAttachment = async (attId: string) => {
-    if (!user) return;
-    await fetch(`/api/tasks/${currentTask.id}/attachments/${attId}`, { method: 'DELETE', headers: { 'x-user-id': user.id } });
-    queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
-  };
+  const removeLink = (linkToRemove: string) => updateLocal({ links: localTask.links?.filter(l => l !== linkToRemove) || [] });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !localTask.id) return toast({ title: "Guarda la tarea primero para subir archivos" });
     toast({ title: "Subiendo archivo..." });
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const { data, error } = await supabase.storage.from('attachments').upload(`${user.id}/${fileName}`, file);
     if (error) return toast({ title: "Error al subir", description: error.message, variant: "destructive" });
     const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(data.path);
-    addAttachment.mutate({ id: currentTask.id, data: { fileName: file.name, fileUrl: publicUrl, fileType: file.type } }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }); toast({ title: "Archivo adjuntado" }); } });
-  };
-
-  const handleDelete = () => {
-    deleteTask.mutate({ id: currentTask.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }); onClose(); } });
-  };
-
-  // LÓGICA DE AUTO-COMPLETADO INTELIGENTE
-  const handleDesdeChange = (newFecha: string | null, newHora: string | null) => {
-    const updates: any = { fechaVencimiento: newFecha, horaInicio: newHora };
-
-    // Auto-completar Fecha Hasta (Si estaba vacía o era igual a la antigua)
-    if (newFecha && (!(currentTask as any).fechaFin || (currentTask as any).fechaFin === currentTask.fechaVencimiento)) {
-      updates.fechaFin = newFecha;
-    }
-
-    // Auto-completar Hora Hasta (+1 hora)
-    if (newHora && newHora !== currentTask.horaInicio) {
-      const [hours, minutes] = newHora.split(':').map(Number);
-      const endDate = new Date();
-      endDate.setHours(hours + 1, minutes);
-      updates.horaVencimiento = format(endDate, 'HH:mm');
-    }
-
-    // Actualizar Notificación Relativa
-    const numVal = parseInt(notifValue);
-    if (!isNaN(numVal) && numVal > 0) {
-      const absTime = getAbsoluteNotifTime(newFecha, newHora, numVal, notifUnit);
-      updates.fechaNotificacion = absTime.fechaNotificacion;
-      updates.horaNotificacion = absTime.horaNotificacion;
-    }
-
-    updateTask.mutate({ id: currentTask.id, data: updates }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
-  };
-
-  const handleNotifChange = (val: string, unit: string) => {
-    setNotifValue(val);
-    setNotifUnit(unit);
-    const numVal = parseInt(val);
-    if (isNaN(numVal) || numVal <= 0) {
-      updateTask.mutate({ id: currentTask.id, data: { fechaNotificacion: null, horaNotificacion: null } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
-      return;
-    }
-    const absTime = getAbsoluteNotifTime(currentTask.fechaVencimiento, currentTask.horaInicio, numVal, unit);
-    updateTask.mutate({ id: currentTask.id, data: absTime }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    addAttachment.mutate({ id: localTask.id, data: { fileName: file.name, fileUrl: publicUrl, fileType: file.type } }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }); toast({ title: "Archivo adjuntado" }); } });
   };
 
   const projects = Array.from(new Set(allTasks?.map(t => t.proyecto).filter(Boolean) || []));
@@ -260,33 +253,45 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
         {/* CABECERA */}
         <div className="p-6 border-b border-gray-100/50 flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
-            <Checkbox completada={currentTask.completada} onToggle={() => updateTask.mutate({ id: currentTask.id, data: { completada: !currentTask.completada } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) })} />
-            <EditableTitle task={currentTask} />
+            <Checkbox completada={localTask.completada || false} onToggle={() => updateLocal({ completada: !localTask.completada })} />
+            <input value={localTask.titulo || ''} onChange={(e) => updateLocal({ titulo: e.target.value })} placeholder="Título de la tarea" className="text-2xl font-semibold text-gray-900 bg-transparent border-none focus:ring-0 p-0 w-full outline-none" />
           </div>
           <div className="flex items-center gap-2">
             <DeleteConfirmButton onDelete={handleDelete} />
-            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-500 rounded-xl transition-colors border border-gray-200 shadow-sm">
-              <X className="w-5 h-5" />
+            <button onClick={handleSave} className="w-9 h-9 flex items-center justify-center bg-black hover:bg-gray-800 text-white rounded-xl transition-colors shadow-sm">
+              <Check className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {/* CONTENIDO */}
         <div className="p-6 max-h-[75vh] overflow-y-auto no-scrollbar space-y-8">
-          <RichTextEditor content={currentTask.descripcion || ''} onChange={handleDescriptionChange} />
+          <RichTextEditor content={localTask.descripcion || ''} onChange={(html) => updateLocal({ descripcion: html })} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* COLUMNA 1: Programación */}
             <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col justify-center gap-5">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm font-medium text-gray-900 w-12">Desde</span>
-                <input type="date" value={currentTask.fechaVencimiento || ''} onChange={(e) => handleDesdeChange(e.target.value || null, currentTask.horaInicio)} className="pill-input" />
-                <input type="time" value={currentTask.horaInicio || ''} onChange={(e) => handleDesdeChange(currentTask.fechaVencimiento, e.target.value || null)} className="pill-input" />
+                <div className="relative w-full max-w-[140px]">
+                  <input type="date" value={localTask.fechaVencimiento || ''} onChange={(e) => handleDesdeChange(e.target.value || null, localTask.horaInicio || null)} className="pill-input" />
+                  {localTask.fechaVencimiento && <button onClick={() => handleDesdeChange(null, localTask.horaInicio || null)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                </div>
+                <div className="relative w-full max-w-[140px]">
+                  <input type="time" value={localTask.horaInicio || ''} onChange={(e) => handleDesdeChange(localTask.fechaVencimiento || null, e.target.value || null)} className="pill-input" />
+                  {localTask.horaInicio && <button onClick={() => handleDesdeChange(localTask.fechaVencimiento || null, null)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                </div>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm font-medium text-gray-900 w-12">hasta</span>
-                <input type="date" value={(currentTask as any).fechaFin || ''} onChange={(e) => updateTask.mutate({ id: currentTask.id, data: { fechaFin: e.target.value || null } as any }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) })} className="pill-input" />
-                <input type="time" value={currentTask.horaVencimiento || ''} onChange={(e) => updateTask.mutate({ id: currentTask.id, data: { horaVencimiento: e.target.value || null } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) })} className="pill-input" />
+                <div className="relative w-full max-w-[140px]">
+                  <input type="date" value={(localTask as any).fechaFin || ''} onChange={(e) => updateLocal({ fechaFin: e.target.value || null } as any)} className="pill-input" />
+                  {(localTask as any).fechaFin && <button onClick={() => updateLocal({ fechaFin: null } as any)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                </div>
+                <div className="relative w-full max-w-[140px]">
+                  <input type="time" value={localTask.horaVencimiento || ''} onChange={(e) => updateLocal({ horaVencimiento: e.target.value || null })} className="pill-input" />
+                  {localTask.horaVencimiento && <button onClick={() => updateLocal({ horaVencimiento: null })} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                </div>
               </div>
             </div>
 
@@ -295,7 +300,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
               <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex items-center justify-between gap-4 flex-1">
                 <span className="text-sm font-medium text-gray-900">Notificación</span>
                 <div className="flex items-center gap-2">
-                  <input type="number" min="1" value={notifValue} onChange={e => handleNotifChange(e.target.value, notifUnit)} className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm text-center font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none shadow-sm" placeholder="0" />
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={notifValue} onChange={e => handleNotifChange(e.target.value.replace(/[^0-9]/g, ''), notifUnit)} className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm text-center font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none shadow-sm" placeholder="0" />
                   <Select value={notifUnit} onValueChange={(val) => handleNotifChange(notifValue, val)}>
                     <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm">
                       <SelectValue />
@@ -316,7 +321,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
                   {isCreatingProject ? (
                     <input autoFocus type="text" value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} onBlur={saveNewProject} onKeyDown={(e) => e.key === 'Enter' && saveNewProject()} placeholder="Nombre..." className="bg-transparent border-0 p-0 text-sm text-gray-900 focus:ring-0 outline-none w-full max-w-[120px]" />
                   ) : (
-                    <Select value={currentTask.proyecto || "none"} onValueChange={handleProjectSelect}>
+                    <Select value={localTask.proyecto || "none"} onValueChange={handleProjectSelect}>
                       <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm w-auto min-w-[120px]">
                         <SelectValue placeholder="Ninguno" />
                       </SelectTrigger>
@@ -351,12 +356,12 @@ export function TaskModal({ task, isOpen, onClose }: { task: Task | null, isOpen
                 <Plus className="w-4 h-4" /> Archivo
               </button>
             </div>
-            {(currentTask.links && currentTask.links.length > 0) || (currentTask.attachments && currentTask.attachments.length > 0) ? (
+            {(localTask.links && localTask.links.length > 0) || (localTask.attachments && localTask.attachments.length > 0) ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {currentTask.links?.map((link, i) => (
+                {localTask.links?.map((link, i) => (
                   <LinkPreview key={i} url={link} onRemove={() => removeLink(link)} />
                 ))}
-                {currentTask.attachments?.map((att) => (
+                {localTask.attachments?.map((att) => (
                   <AttachmentPreview key={att.id} att={att} onRemove={() => removeAttachment(att.id)} />
                 ))}
               </div>

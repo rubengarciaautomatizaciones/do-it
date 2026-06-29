@@ -21,11 +21,13 @@ import type {
 
 import type {
   AddTaskAttachmentBody,
-  CreateCheckout200,
   CreateCheckoutBody,
-  CreatePortal200,
+  CreateCheckoutResponse,
   CreatePortalBody,
+  CreatePortalResponse,
   DeleteAccountParams,
+  GetGoogleCalendarEvents200Item,
+  GetGoogleCalendarEventsParams,
   GetTaskMetadataParams,
   GetTasksParams,
   Habit,
@@ -1380,9 +1382,9 @@ export const getCreateCheckoutUrl = () => {
   return `/api/stripe/checkout`
 }
 
-export const createCheckout = async (createCheckoutBody: CreateCheckoutBody, options?: RequestInit): Promise<CreateCheckout200> => {
+export const createCheckout = async (createCheckoutBody: CreateCheckoutBody, options?: RequestInit): Promise<CreateCheckoutResponse> => {
 
-  return customFetch<CreateCheckout200>(getCreateCheckoutUrl(),
+  return customFetch<CreateCheckoutResponse>(getCreateCheckoutUrl(),
   {
     ...options,
     method: 'POST',
@@ -1445,9 +1447,9 @@ export const getCreatePortalUrl = () => {
   return `/api/stripe/portal`
 }
 
-export const createPortal = async (createPortalBody: CreatePortalBody, options?: RequestInit): Promise<CreatePortal200> => {
+export const createPortal = async (createPortalBody: CreatePortalBody, options?: RequestInit): Promise<CreatePortalResponse> => {
 
-  return customFetch<CreatePortal200>(getCreatePortalUrl(),
+  return customFetch<CreatePortalResponse>(getCreatePortalUrl(),
   {
     ...options,
     method: 'POST',
@@ -1572,4 +1574,82 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getDeleteAccountMutationOptions(options));
     }
+
+export const getGetGoogleCalendarEventsUrl = (params: GetGoogleCalendarEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/calendar/events?${stringifiedParams}` : `/api/calendar/events`
+}
+
+export const getGoogleCalendarEvents = async (params: GetGoogleCalendarEventsParams, options?: RequestInit): Promise<GetGoogleCalendarEvents200Item[]> => {
+
+  return customFetch<GetGoogleCalendarEvents200Item[]>(getGetGoogleCalendarEventsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGoogleCalendarEventsQueryKey = (params?: GetGoogleCalendarEventsParams,) => {
+    return [
+    `/api/calendar/events`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGoogleCalendarEventsQueryOptions = <TData = Awaited<ReturnType<typeof getGoogleCalendarEvents>>, TError = ErrorType<unknown>>(params: GetGoogleCalendarEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGoogleCalendarEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGoogleCalendarEventsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGoogleCalendarEvents>>> = ({ signal }) => getGoogleCalendarEvents(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGoogleCalendarEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGoogleCalendarEventsQueryResult = NonNullable<Awaited<ReturnType<typeof getGoogleCalendarEvents>>>
+export type GetGoogleCalendarEventsQueryError = ErrorType<unknown>
+
+
+
+export function useGetGoogleCalendarEvents<TData = Awaited<ReturnType<typeof getGoogleCalendarEvents>>, TError = ErrorType<unknown>>(
+ params: GetGoogleCalendarEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGoogleCalendarEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGoogleCalendarEventsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 

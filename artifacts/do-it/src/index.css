@@ -131,17 +131,13 @@
 }
 
 @layer utilities {
-  /* Ocultar scrollbar para Chrome, Safari y Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
-  /* Ocultar scrollbar para IE, Edge y Firefox */
   .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
-
-  /* Ocultar el placeholder de TipTap inmediatamente al hacer focus */
   .ProseMirror:focus [data-placeholder]::before,
   .ProseMirror:focus-within [data-placeholder]::before,
   .ProseMirror:focus .is-editor-empty::before {
@@ -216,12 +212,10 @@
   display: none !important;
 }
 
-/* Estilo de los eventos (Negro sólido) */
+/* Estilo de los eventos (Do it! vs Google Calendar) */
 .fc-event {
   border-radius: 4px !important;
   border: none !important;
-  background-color: #111111 !important;
-  color: #FFFFFF !important;
   box-shadow: none !important;
   transition: transform 0.1s !important;
 }
@@ -229,11 +223,24 @@
   transform: scale(1.01);
   z-index: 10 !important;
 }
+.fc-event.doit-event {
+  background-color: #F9FAFB !important; /* bg-gray-50 */
+  color: #111111 !important;
+  border-left: 3px solid #111111 !important;
+}
 .fc-event.completed-event {
   opacity: 0.5;
   background-color: #F5F5F5 !important;
   color: #A3A3A3 !important;
+  border-left: 3px solid #A3A3A3 !important;
 }
+.fc-event.google-event {
+  background-color: #FFFFFF !important;
+  color: #111111 !important;
+  border: 1px solid #E5E7EB !important;
+  border-left: 3px solid #E5E7EB !important;
+}
+
 .fc-timegrid-event .fc-event-main {
   padding: 2px 4px !important;
   font-size: 0.75rem !important;
@@ -262,7 +269,6 @@
   margin-top: -5px !important;
   z-index: 51 !important;
 }
-/* Evitar que la línea infinita rompa el layout horizontal */
 .fc-scroller-liquid-absolute {
   overflow-x: hidden !important;
 }
@@ -272,18 +278,17 @@
   background-color: #F9FAFB !important; /* bg-gray-50 */
   color: #111111 !important;
   border: none !important;
-  border-right: 1px solid #FFFFFF !important; /* Pequeña separación blanca entre días */
+  border-right: 1px solid #FFFFFF !important;
 }
 .fc-day-today.fc-col-header-cell {
   background-color: #111111 !important;
   color: #FFFFFF !important;
 }
 .fc-col-header-cell-cushion {
-  padding: 8px !important;
   width: 100%;
 }
 
-/* Limpieza de bordes */
+/* Limpieza de bordes y horas centradas */
 .fc-theme-standard .fc-scrollgrid {
   border: none !important;
 }
@@ -294,4 +299,7 @@
   font-size: 0.75rem !important;
   color: #A3A3A3 !important;
   font-weight: 500 !important;
+  transform: translateY(-50%); /* Centra el texto en la línea */
+  position: relative;
+  top: 50%;
 }

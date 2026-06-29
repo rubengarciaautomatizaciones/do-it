@@ -244,6 +244,23 @@ export interface UserPreferenceUpdate {
   hasSeenTutorial?: boolean;
 }
 
+export interface CreateCheckoutBody {
+  priceId: string;
+  userId: string;
+}
+
+export interface CreateCheckoutResponse {
+  url?: string;
+}
+
+export interface CreatePortalBody {
+  userId: string;
+}
+
+export interface CreatePortalResponse {
+  url?: string;
+}
+
 export type GetTasksParams = {
 completed?: boolean;
 };
@@ -260,24 +277,20 @@ export type UnlogHabitParams = {
 date?: string;
 };
 
-export type CreateCheckoutBody = {
-  priceId: string;
-  userId: string;
-};
-
-export type CreateCheckout200 = {
-  url?: string;
-};
-
-export type CreatePortalBody = {
-  userId: string;
-};
-
-export type CreatePortal200 = {
-  url?: string;
-};
-
 export type DeleteAccountParams = {
 userId: string;
+};
+
+export type GetGoogleCalendarEventsParams = {
+userId: string;
+};
+
+export type GetGoogleCalendarEvents200Item = {
+  id?: string;
+  title?: string;
+  start?: string;
+  end?: string;
+  allDay?: boolean;
+  isGoogleCalendar?: boolean;
 };
 
