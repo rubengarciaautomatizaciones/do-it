@@ -288,3 +288,10 @@ thead tr th:first-child {
   margin: 4px;
   text-decoration: none !important;
 }
+
+.fc-scrollgrid-section-header,
+.fc-scrollgrid-section-header > td,
+.fc-scrollgrid-sync-table,
+.fc-scrollgrid {
+    border-top: none !important;
+}
