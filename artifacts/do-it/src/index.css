@@ -135,7 +135,7 @@
 .fc-event.doit-event .fc-event-main,
 .fc-event.doit-event .fc-event-title,
 .fc-event.doit-event .fc-event-time {
-  color: #111111 !important;
+  color: #FFFFFF !important;
 }
 
 /* Eventos Completados (Tachados) */
@@ -147,7 +147,7 @@
 .fc-event.completed-event .fc-event-main,
 .fc-event.completed-event .fc-event-title,
 .fc-event.completed-event .fc-event-time {
-  color: #111111 !important;
+  color: #FFFFFF !important;
   text-decoration: line-through !important;
 }
 
@@ -231,7 +231,7 @@ thead tr th:first-child {
 .fc-theme-standard td, .fc-theme-standard th {
   border-right: none !important;
   border-left: none !important;
-  border-color: #F5F5F5 !important;
+  border-color: #FFFFFF !important;
 }
 .fc-timegrid-slot-minor { border-bottom: none !important; }
 .fc-timegrid-slot { height: 48px !important; }
