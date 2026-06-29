@@ -42,6 +42,7 @@ export default function Calendar() {
 
   // Estado para el mini-calendario manual (Popover)
   const [miniCalDate, setMiniCalDate] = useState(new Date());
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (calendarRef.current) {
@@ -108,7 +109,7 @@ export default function Calendar() {
   const handleTouchEnd = (e: React.TouchEvent) => {
     const touchEndX = e.changedTouches[0].clientX;
     if (touchStartX - touchEndX > 50) calendarRef.current?.getApi().next();
-    if (touchEndX - touchStartX < -50) calendarRef.current?.getApi().prev();
+    if (touchEndX - touchStartX > 50) calendarRef.current?.getApi().prev();
   };
 
   // Lógica de Swipe para el mini-calendario
@@ -180,7 +181,7 @@ export default function Calendar() {
             <div key={i} className="aspect-square flex items-center justify-center">
               {d && (
                 <button 
-                  onClick={() => { calendarRef.current?.getApi().gotoDate(d); document.dispatchEvent(new MouseEvent('click')); }}
+                  onClick={() => { calendarRef.current?.getApi().gotoDate(d); setIsPopoverOpen(false); }}
                   className={`w-8 h-8 rounded-full text-sm font-medium flex items-center justify-center transition-colors ${format(d, 'yyyy-MM-dd') === format(currentDate, 'yyyy-MM-dd') ? 'bg-black text-white' : 'text-gray-700 hover:bg-gray-100'}`}
                 >
                   {d.getDate()}
@@ -241,19 +242,19 @@ export default function Calendar() {
               </button>
             )}
           </div>
-          <div className="flex items-center justify-center relative">
+          <div className="flex items-center justify-between relative">
             <div className="flex items-center gap-2">
-              <Popover>
+              <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium shadow-sm flex items-center gap-2 text-gray-900">
                   {format(currentDate, 'MMM yyyy', { locale: es })} <ChevronDown className="w-4 h-4 text-gray-500"/>
                 </PopoverTrigger>
-                <PopoverContent className="w-[calc(100vw-2rem)] p-4 rounded-2xl shadow-xl border-gray-100 mt-2">
+                <PopoverContent align="start" className="w-[calc(100vw-2rem)] p-4 rounded-2xl shadow-xl border-gray-100 mt-2">
                   {renderMiniCalendar()}
                 </PopoverContent>
               </Popover>
               <button onClick={() => calendarRef.current?.getApi().today()} className="bg-white border border-gray-200 rounded-xl h-[38px] px-4 text-sm font-medium shadow-sm hover:bg-gray-50 text-gray-900">Hoy</button>
             </div>
-            <button onClick={handleCreateTask} className="absolute right-0 bg-black text-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"><Plus className="w-5 h-5"/></button>
+            <button onClick={handleCreateTask} className="bg-black text-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"><Plus className="w-5 h-5"/></button>
           </div>
         </div>
 
@@ -281,8 +282,8 @@ export default function Calendar() {
               slotMaxTime="24:00:00"
               slotDuration="01:00:00"
               slotLabelInterval="01:00:00"
-              snapDuration="00:05:00"
-              selectLongPressDelay={250} // Creación rápida en móvil
+              snapDuration="00:15:00" // <-- 15 minutos
+              selectLongPressDelay={1000} // <-- 1 segundo para crear/arrastrar en móvil
               allDayText=""
               select={handleDateSelect}
               eventClick={(info) => {

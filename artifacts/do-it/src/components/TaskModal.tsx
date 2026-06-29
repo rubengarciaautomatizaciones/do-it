@@ -108,7 +108,6 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
   const addAttachment = useAddTaskAttachment();
   const { data: allTasks } = useGetTasks();
 
-  // ESTADO LOCAL (MODO BORRADOR)
   const [localTask, setLocalTask] = useState<Partial<Task> | null>(null);
   const [notifValue, setNotifValue] = useState<string>('');
   const [notifUnit, setNotifUnit] = useState<string>('minutos');
@@ -119,7 +118,6 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
   const [newProjectName, setNewProjectName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sincronizar prop con estado local al abrir
   useEffect(() => {
     if (isOpen && task) {
       const existingTask = allTasks?.find(t => t.id === task.id);
@@ -141,14 +139,14 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
 
   const updateLocal = (updates: Partial<Task>) => setLocalTask(prev => ({ ...prev, ...updates }));
 
-  // GUARDAR (TICK)
+  // GUARDADO OPTIMISTA (INSTANTÁNEO)
   const handleSave = () => {
     if (!user) return;
     const isNew = !localTask.id;
     const isEmpty = !localTask.titulo || localTask.titulo.trim() === "" || localTask.titulo === "Nueva tarea";
 
     if (isNew && isEmpty) {
-      onClose(); // Descartar si está vacío
+      onClose(); // Si está vacío, simplemente cerramos y descartamos
       return;
     }
 
@@ -166,17 +164,30 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
       completada: localTask.completada
     };
 
+    // Actualizamos la caché de React Query al instante para que la UI no tenga lag
+    queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => {
+      if (!old) return old;
+      if (isNew) {
+        return [...old, { ...payload, id: Math.random().toString(), userId: user.id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }];
+      } else {
+        return old.map(t => t.id === localTask.id ? { ...t, ...payload } : t);
+      }
+    });
+
+    // Disparamos la petición en segundo plano
     if (isNew) {
-      createTask.mutate({ data: { ...payload, userId: user.id } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+      createTask.mutate({ data: { ...payload, userId: user.id } }, { onSettled: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
     } else {
-      updateTask.mutate({ id: localTask.id!, data: payload }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+      updateTask.mutate({ id: localTask.id!, data: payload }, { onSettled: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
     }
+
     onClose();
   };
 
   const handleDelete = () => {
     if (localTask.id) {
-      deleteTask.mutate({ id: localTask.id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+      queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => old?.filter(t => t.id !== localTask.id));
+      deleteTask.mutate({ id: localTask.id }, { onSettled: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
     }
     onClose();
   };
@@ -247,7 +258,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
   const projects = Array.from(new Set(allTasks?.map(t => t.proyecto).filter(Boolean) || []));
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if(!open) onClose(); }}>
       <DialogContent className="bg-white border border-gray-100/50 shadow-2xl w-[95vw] sm:w-[calc(100vw-4rem)] max-w-4xl rounded-3xl p-0 gap-0 overflow-hidden [&>button]:hidden">
 
         {/* CABECERA */}
@@ -275,22 +286,22 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
                 <span className="text-sm font-medium text-gray-900 w-12">Desde</span>
                 <div className="relative w-full max-w-[140px]">
                   <input type="date" value={localTask.fechaVencimiento || ''} onChange={(e) => handleDesdeChange(e.target.value || null, localTask.horaInicio || null)} className="pill-input" />
-                  {localTask.fechaVencimiento && <button onClick={() => handleDesdeChange(null, localTask.horaInicio || null)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                  {localTask.fechaVencimiento && <button onPointerDown={(e) => { e.preventDefault(); handleDesdeChange(null, localTask.horaInicio || null); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
                 </div>
                 <div className="relative w-full max-w-[140px]">
                   <input type="time" value={localTask.horaInicio || ''} onChange={(e) => handleDesdeChange(localTask.fechaVencimiento || null, e.target.value || null)} className="pill-input" />
-                  {localTask.horaInicio && <button onClick={() => handleDesdeChange(localTask.fechaVencimiento || null, null)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                  {localTask.horaInicio && <button onPointerDown={(e) => { e.preventDefault(); handleDesdeChange(localTask.fechaVencimiento || null, null); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
                 </div>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm font-medium text-gray-900 w-12">hasta</span>
                 <div className="relative w-full max-w-[140px]">
                   <input type="date" value={(localTask as any).fechaFin || ''} onChange={(e) => updateLocal({ fechaFin: e.target.value || null } as any)} className="pill-input" />
-                  {(localTask as any).fechaFin && <button onClick={() => updateLocal({ fechaFin: null } as any)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                  {(localTask as any).fechaFin && <button onPointerDown={(e) => { e.preventDefault(); updateLocal({ fechaFin: null } as any); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
                 </div>
                 <div className="relative w-full max-w-[140px]">
                   <input type="time" value={localTask.horaVencimiento || ''} onChange={(e) => updateLocal({ horaVencimiento: e.target.value || null })} className="pill-input" />
-                  {localTask.horaVencimiento && <button onClick={() => updateLocal({ horaVencimiento: null })} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                  {localTask.horaVencimiento && <button onPointerDown={(e) => { e.preventDefault(); updateLocal({ horaVencimiento: null }); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
                 </div>
               </div>
             </div>
@@ -300,7 +311,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
               <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex items-center justify-between gap-4 flex-1">
                 <span className="text-sm font-medium text-gray-900">Notificación</span>
                 <div className="flex items-center gap-2">
-                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={notifValue} onChange={e => handleNotifChange(e.target.value.replace(/[^0-9]/g, ''), notifUnit)} className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm text-center font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none shadow-sm" placeholder="0" />
+                  <input type="number" inputMode="numeric" pattern="[0-9]*" value={notifValue} onChange={e => handleNotifChange(e.target.value.replace(/[^0-9]/g, ''), notifUnit)} className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm text-center font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none shadow-sm" placeholder="0" />
                   <Select value={notifUnit} onValueChange={(val) => handleNotifChange(notifValue, val)}>
                     <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm">
                       <SelectValue />

@@ -182,12 +182,10 @@
   @apply bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none transition-shadow w-full max-w-[140px] cursor-pointer shadow-sm;
 }
 .pill-input::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  display: none !important;
 }
-.pill-input::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
+.pill-input::-webkit-inner-spin-button, .pill-input::-webkit-clear-button {
+  display: none !important;
 }
 
 /* Ocultar Scrollbars globalmente en el calendario */
@@ -224,8 +222,8 @@
   z-index: 10 !important;
 }
 .fc-event.doit-event {
-  background-color: #F9FAFB !important; /* bg-gray-50 */
-  color: #111111 !important;
+  background-color: #111111 !important;
+  color: #FFFFFF !important;
   border-left: 3px solid #111111 !important;
 }
 .fc-event.completed-event {
@@ -235,9 +233,9 @@
   border-left: 3px solid #A3A3A3 !important;
 }
 .fc-event.google-event {
-  background-color: #FFFFFF !important;
-  color: #111111 !important;
-  border: 1px solid #E5E7EB !important;
+  background-color: #F9FAFB !important; /* bg-gray-50 */
+  color: #6B7280 !important; /* text-gray-500 */
+  border: none !important;
   border-left: 3px solid #E5E7EB !important;
 }
 
@@ -288,18 +286,31 @@
   width: 100%;
 }
 
-/* Limpieza de bordes y horas centradas */
+/* Limpieza de bordes y horas centradas (No-Excel Look) */
 .fc-theme-standard .fc-scrollgrid {
   border: none !important;
 }
 .fc-theme-standard td, .fc-theme-standard th {
-  border-color: #F5F5F5 !important;
+  border-right: none !important;
+  border-left: none !important;
+}
+.fc-timegrid-slot-minor {
+  border-bottom: none !important; /* Quita las líneas de media hora */
+}
+.fc-timegrid-slot {
+  height: 48px !important; /* Filas más altas */
+}
+.fc-timegrid-slot-label-frame {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 .fc-timegrid-slot-label-cushion {
   font-size: 0.75rem !important;
   color: #A3A3A3 !important;
   font-weight: 500 !important;
-  transform: translateY(-50%); /* Centra el texto en la línea */
   position: relative;
-  top: 50%;
+  top: -24px; /* Centra el texto en la línea */
+  background: white;
+  padding-right: 8px !important;
 }
