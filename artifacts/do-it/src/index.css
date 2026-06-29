@@ -210,33 +210,60 @@
   display: none !important;
 }
 
-/* Estilo de los eventos (Do it! vs Google Calendar) */
+/* Estilo base de los eventos */
 .fc-event {
   border-radius: 4px !important;
   border: none !important;
   box-shadow: none !important;
   transition: transform 0.1s !important;
+  outline: none !important; /* Quitar anillo azul de focus */
+}
+.fc-event:focus, .fc-event:focus-visible, .fc-event:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.fc-event::after {
+  display: none !important; /* Quitar pseudo-elementos de focus de FullCalendar */
 }
 .fc-event:hover {
   transform: scale(1.01);
   z-index: 10 !important;
 }
+
+/* Eventos de Do it! (Negro sólido) */
 .fc-event.doit-event {
   background-color: #111111 !important;
+  border-left: 3px solid #111111 !important;
+}
+.fc-event.doit-event .fc-event-main,
+.fc-event.doit-event .fc-event-title,
+.fc-event.doit-event .fc-event-time {
   color: #FFFFFF !important;
-  border-left: 3px solid #111111 !important;
 }
+
+/* Eventos Completados (Mismo color, solo tachados) */
 .fc-event.completed-event {
-  opacity: 0.5;
-  background-color: #F5F5F5 !important;
-  color: #A3A3A3 !important;
-  border-left: 3px solid #A3A3A3 !important;
-}
-.fc-event.google-event {
-  background-color: #A3A3A3 !important;
-  color: #111111 !important;
-  border: none !important;
+  background-color: #111111 !important;
   border-left: 3px solid #111111 !important;
+  opacity: 1 !important; /* No cambiar opacidad */
+}
+.fc-event.completed-event .fc-event-main,
+.fc-event.completed-event .fc-event-title,
+.fc-event.completed-event .fc-event-time {
+  color: #FFFFFF !important;
+  text-decoration: line-through !important; /* Solo tachar */
+}
+
+/* Eventos de Google Calendar (Fondo gris claro, texto gris oscuro) */
+.fc-event.google-event {
+  background-color: #F9FAFB !important; /* bg-gray-50 */
+  border: none !important;
+  border-left: 3px solid #A3A3A3 !important; /* Borde gris */
+}
+.fc-event.google-event .fc-event-main,
+.fc-event.google-event .fc-event-title,
+.fc-event.google-event .fc-event-time {
+  color: #A3A3A3 !important; /* Texto gris oscuro para que se lea bien */
 }
 
 /* Eliminar el punto azul de los eventos en vista de mes */
@@ -289,6 +316,7 @@
 }
 .fc-col-header-cell-cushion {
   width: 100%;
+  text-decoration: none !important; /* Quitar subrayado azul al hacer hover */
 }
 .fc-col-header-cell-cushion .day-name {
   color: #A3A3A3;
