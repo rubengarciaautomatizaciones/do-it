@@ -275,7 +275,7 @@ export default function Calendar() {
         {tasksLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
         ) : (
-          <motion.div animate={slideConfig} transition={{ duration: 0.15 }} className="bg-white h-full w-full rounded-t-2xl overflow-hidden border-t border-gray-100">
+          <motion.div animate={slideConfig} transition={{ duration: 0.15 }} className="bg-white h-full w-full rounded-t-2xl overflow-hidden border-t border-white">
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
