@@ -107,7 +107,7 @@
 
 /* FullCalendar Apple Minimalist Overrides */
 .fc {
-  --fc-border-color: #F5F5F5;
+  --fc-border-color: #FFFFFF;
   --fc-today-bg-color: transparent;
   --fc-now-indicator-color: #111111;
   font-family: 'Inter', sans-serif;
