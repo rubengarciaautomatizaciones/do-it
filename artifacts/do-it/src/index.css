@@ -293,5 +293,5 @@ thead tr th:first-child {
 .fc-scrollgrid-section-header > td,
 .fc-scrollgrid-sync-table,
 .fc-scrollgrid {
-    border-top: none !important;
+    border-top-color: transparent !important;
 }
