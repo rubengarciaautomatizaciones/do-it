@@ -355,3 +355,17 @@
   background: white;
   padding-right: 8px !important;
 }
+
+/* Círculo negro para el día de "Hoy" en la vista de Mes */
+.fc-day-today .fc-daygrid-day-number {
+  background-color: #111111 !important;
+  color: #FFFFFF !important;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px;
+  text-decoration: none !important;
+}

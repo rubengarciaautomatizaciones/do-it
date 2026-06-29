@@ -21,8 +21,9 @@ import Profile from "./pages/Profile";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24 * 7, // Guarda la caché durante 7 días
-      staleTime: 1000 * 60 * 5, // Considera los datos frescos durante 5 minutos
+      gcTime: 1000 * 60 * 60 * 24 * 7, // Guarda la caché offline durante 7 días
+      staleTime: 0, // <-- CAMBIO: 0 significa que siempre buscará cambios en 2º plano al abrir la app
+      refetchOnWindowFocus: true, // <-- CAMBIO: Refresca los datos al cambiar de pestaña o abrir la app
     },
   },
 });
