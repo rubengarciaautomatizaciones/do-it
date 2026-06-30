@@ -334,6 +334,14 @@ export const DeleteAccountQueryParams = zod.object({
 })
 
 
+export const CreateSupportTicketBody = zod.object({
+  "userId": zod.string(),
+  "email": zod.string(),
+  "motivo": zod.string(),
+  "mensaje": zod.string()
+})
+
+
 export const GetGoogleCalendarEventsQueryParams = zod.object({
   "userId": zod.coerce.string()
 })

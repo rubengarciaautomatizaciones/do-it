@@ -397,6 +397,26 @@ paths:
         "204":
           description: Account deleted
 
+  /support:
+    post:
+      operationId: createSupportTicket
+      tags: [preferences]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, email, motivo, mensaje]
+              properties:
+                userId: { type: string }
+                email: { type: string }
+                motivo: { type: string }
+                mensaje: { type: string }
+      responses:
+        "201":
+          description: Ticket created
+
   /calendar/events:
     get:
       operationId: getGoogleCalendarEvents

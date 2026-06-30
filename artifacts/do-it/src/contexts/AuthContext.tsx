@@ -30,7 +30,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setUserId(session?.user?.id ?? null); // Seteo global del usuario
+      setUserId(session?.user?.id ?? null);
+      if (event === 'PASSWORD_RECOVERY') {
+        window.location.href = '/profile?recovery=true';
+      }// Seteo global del usuario
     });
 
     return () => subscription.unsubscribe();

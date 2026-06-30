@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   titulo TEXT NOT NULL,
   descripcion TEXT,
   fecha_vencimiento TEXT,
-  hora_inicio TEXT, -- <-- NUEVA COLUMNA
+  hora_inicio TEXT,
   hora_vencimiento TEXT,
   fecha_notificacion TEXT,
   hora_notificacion TEXT,
@@ -91,6 +91,16 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Support Tickets table (NUEVA)
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  motivo TEXT NOT NULL,
+  mensaje TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Row Level Security
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_attachments ENABLE ROW LEVEL SECURITY;
@@ -98,6 +108,7 @@ ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE habit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 
 -- Tasks RLS policies
 CREATE POLICY "Users can view own tasks" ON tasks FOR SELECT USING (auth.uid() = user_id);
@@ -145,3 +156,6 @@ CREATE POLICY "Users can update own preferences" ON user_preferences FOR UPDATE 
 CREATE POLICY "Users can view own push subscriptions" ON push_subscriptions FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own push subscriptions" ON push_subscriptions FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete own push subscriptions" ON push_subscriptions FOR DELETE USING (auth.uid() = user_id);
+
+-- Support Tickets RLS policies
+CREATE POLICY "Users can view own tickets" ON support_tickets FOR SELECT USING (auth.uid() = user_id);

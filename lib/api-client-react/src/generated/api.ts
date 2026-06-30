@@ -25,6 +25,7 @@ import type {
   CreateCheckoutResponse,
   CreatePortalBody,
   CreatePortalResponse,
+  CreateSupportTicketBody,
   DeleteAccountParams,
   GetGoogleCalendarEvents200Item,
   GetGoogleCalendarEventsParams,
@@ -1573,6 +1574,71 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteAccountMutationOptions(options));
+    }
+
+export const getCreateSupportTicketUrl = () => {
+
+
+
+
+  return `/api/support`
+}
+
+export const createSupportTicket = async (createSupportTicketBody: CreateSupportTicketBody, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getCreateSupportTicketUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createSupportTicketBody,)
+  }
+);}
+
+
+
+
+export const getCreateSupportTicketMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupportTicket>>, TError,{data: BodyType<CreateSupportTicketBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSupportTicket>>, TError,{data: BodyType<CreateSupportTicketBody>}, TContext> => {
+
+const mutationKey = ['createSupportTicket'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSupportTicket>>, {data: BodyType<CreateSupportTicketBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSupportTicket(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSupportTicketMutationResult = NonNullable<Awaited<ReturnType<typeof createSupportTicket>>>
+    export type CreateSupportTicketMutationBody = BodyType<CreateSupportTicketBody>
+    export type CreateSupportTicketMutationError = ErrorType<unknown>
+
+    export const useCreateSupportTicket = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupportTicket>>, TError,{data: BodyType<CreateSupportTicketBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSupportTicket>>,
+        TError,
+        {data: BodyType<CreateSupportTicketBody>},
+        TContext
+      > => {
+      return useMutation(getCreateSupportTicketMutationOptions(options));
     }
 
 export const getGetGoogleCalendarEventsUrl = (params: GetGoogleCalendarEventsParams,) => {

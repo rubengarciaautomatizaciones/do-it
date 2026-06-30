@@ -9,6 +9,8 @@ import stripeRouter from "./stripe"; // <-- ESTE ES EL IMPORT QUE FALTABA
 import cronRouter from "./cron";
 import notificationsRouter from "./notifications"; // <-- AÑADIR ESTO
 import accountRouter from "./account"; // <-- AÑADIR
+import supportRouter from "./support";
+
 
 
 
@@ -24,5 +26,7 @@ router.use(calendarRouter);
 router.use(cronRouter); 
 router.use(notificationsRouter);
 router.use(accountRouter);
+router.use(supportRouter);
+
 
 export default router;

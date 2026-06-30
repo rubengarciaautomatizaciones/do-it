@@ -30,3 +30,12 @@ export const pushSubscriptionsTable = pgTable("push_subscriptions", {
   auth: text("auth").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const supportTicketsTable = pgTable("support_tickets", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: uuid("user_id").notNull(),
+  email: text("email").notNull(),
+  motivo: text("motivo").notNull(),
+  mensaje: text("mensaje").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

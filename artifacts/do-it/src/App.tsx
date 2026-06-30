@@ -16,6 +16,8 @@ import Tasks from "./pages/Tasks";
 import Habits from "./pages/Habits";
 import Calendar from "./pages/Calendar";
 import Profile from "./pages/Profile";
+import { I18nProvider } from "./contexts/I18nContext";
+
 
 // Configuración de React Query para Modo Offline
 const queryClient = new QueryClient({
@@ -69,10 +71,11 @@ export default function App() {
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: asyncStoragePersister }}>
       <TooltipProvider>
         <AuthProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-        </AuthProvider>
+          <I18nProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+          </AuthProvider>
         <Toaster />
       </TooltipProvider>
     </PersistQueryClientProvider>

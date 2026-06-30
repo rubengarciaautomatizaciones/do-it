@@ -281,6 +281,13 @@ export type DeleteAccountParams = {
 userId: string;
 };
 
+export type CreateSupportTicketBody = {
+  userId: string;
+  email: string;
+  motivo: string;
+  mensaje: string;
+};
+
 export type GetGoogleCalendarEventsParams = {
 userId: string;
 };
