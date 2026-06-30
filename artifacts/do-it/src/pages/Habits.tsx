@@ -199,6 +199,7 @@ export default function Habits() {
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 h-[144px] flex flex-col">
               <div className="flex items-center justify-between mb-2">
                 <Select value={chartHabitFilter} onValueChange={(v) => {
+                  // BLOQUEO: Solo usuarios Premium pueden filtrar por hábito específico
                   if (!prefs?.isPremium && v !== 'all') { setShowPaywall(true); return; }
                   setChartHabitFilter(v);
                 }}>
@@ -208,8 +209,9 @@ export default function Habits() {
                     {allHabits.map(h => <SelectItem key={h.id} value={h.id}>{h.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
+
                 <Select value={chartTimeFilter.toString()} onValueChange={(v) => {
-                  if (!prefs?.isPremium && v !== '7') { setShowPaywall(true); return; }
+                  // PERMITIDO: Todos los usuarios pueden cambiar el tiempo
                   setChartTimeFilter(parseInt(v));
                 }}>
                   <SelectTrigger className="h-6 text-xs bg-transparent border-0 p-0 shadow-none focus:ring-0 font-medium text-gray-400 w-auto"><SelectValue /></SelectTrigger>
