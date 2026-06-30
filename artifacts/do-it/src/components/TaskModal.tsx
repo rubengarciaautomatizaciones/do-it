@@ -12,6 +12,7 @@ import { Checkbox } from './TaskItem';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '../contexts/I18nContext';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -75,24 +76,15 @@ function AttachmentPreview({ att, onRemove }: { att: any, onRemove: () => void }
   );
 }
 
-function DeleteConfirmButton({ onDelete }: { onDelete: () => void }) {
+function DeleteConfirmButton({ onDelete, t }: { onDelete: () => void, t: any }) {
   const [isConfirming, setIsConfirming] = useState(false);
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isConfirming) timer = setTimeout(() => setIsConfirming(false), 2000);
-    return () => clearTimeout(timer);
-  }, [isConfirming]);
-
+  useEffect(() => { let timer: NodeJS.Timeout; if (isConfirming) timer = setTimeout(() => setIsConfirming(false), 2000); return () => clearTimeout(timer); }, [isConfirming]);
   return (
     <AnimatePresence mode="wait">
       {!isConfirming ? (
-        <motion.button key="trash" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setIsConfirming(true)} className="w-9 h-9 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-colors border border-gray-200 shadow-sm">
-          <Trash2 className="w-4 h-4" />
-        </motion.button>
+        <motion.button key="trash" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setIsConfirming(true)} className="w-9 h-9 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-colors border border-gray-200 shadow-sm"><Trash2 className="w-4 h-4" /></motion.button>
       ) : (
-        <motion.button key="confirm" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => { onDelete(); setIsConfirming(false); }} className="h-9 px-3 flex items-center justify-center bg-red-500 text-white text-xs font-medium rounded-xl shadow-sm">
-          Eliminar
-        </motion.button>
+        <motion.button key="confirm" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => { onDelete(); setIsConfirming(false); }} className="h-9 px-3 flex items-center justify-center bg-red-500 text-white text-xs font-medium rounded-xl shadow-sm">{t('profile.deleteAccount').split(' ')[0]}</motion.button>
       )}
     </AnimatePresence>
   );
@@ -101,6 +93,7 @@ function DeleteConfirmButton({ onDelete }: { onDelete: () => void }) {
 export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | null, isOpen: boolean, onClose: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
@@ -123,15 +116,10 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
       const existingTask = allTasks?.find(t => t.id === task.id);
       const taskData = existingTask || task;
       setLocalTask(taskData);
-
       if (taskData.fechaNotificacion) {
         const rel = getRelativeNotif(taskData.fechaVencimiento || null, taskData.horaInicio || null, taskData.fechaNotificacion, taskData.horaNotificacion || null);
-        setNotifValue(rel.value);
-        setNotifUnit(rel.unit);
-      } else {
-        setNotifValue('');
-        setNotifUnit('minutos');
-      }
+        setNotifValue(rel.value); setNotifUnit(rel.unit);
+      } else { setNotifValue(''); setNotifUnit('minutos'); }
     }
   }, [isOpen, task, allTasks]);
 
@@ -139,48 +127,24 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
 
   const updateLocal = (updates: Partial<Task>) => setLocalTask(prev => ({ ...prev, ...updates }));
 
-  // GUARDADO OPTIMISTA (INSTANTÁNEO)
   const handleSave = () => {
     if (!user) return;
     const isNew = !localTask.id;
-    const isEmpty = !localTask.titulo || localTask.titulo.trim() === "" || localTask.titulo === "Nueva tarea";
-
-    if (isNew && isEmpty) {
-      onClose(); // Si está vacío, simplemente cerramos y descartamos
-      return;
-    }
+    const isEmpty = !localTask.titulo || localTask.titulo.trim() === "" || localTask.titulo === t('modal.new');
+    if (isNew && isEmpty) { onClose(); return; }
 
     const payload: any = {
-      titulo: localTask.titulo || "Sin título",
-      descripcion: localTask.descripcion,
-      fechaVencimiento: localTask.fechaVencimiento,
-      fechaFin: (localTask as any).fechaFin,
-      horaInicio: localTask.horaInicio,
-      horaVencimiento: localTask.horaVencimiento,
-      fechaNotificacion: localTask.fechaNotificacion,
-      horaNotificacion: localTask.horaNotificacion,
-      proyecto: localTask.proyecto,
-      links: localTask.links,
-      completada: localTask.completada
+      titulo: localTask.titulo || "Sin título", descripcion: localTask.descripcion, fechaVencimiento: localTask.fechaVencimiento, fechaFin: (localTask as any).fechaFin, horaInicio: localTask.horaInicio, horaVencimiento: localTask.horaVencimiento, fechaNotificacion: localTask.fechaNotificacion, horaNotificacion: localTask.horaNotificacion, proyecto: localTask.proyecto, links: localTask.links, completada: localTask.completada
     };
 
-    // Actualizamos la caché de React Query al instante para que la UI no tenga lag
     queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => {
       if (!old) return old;
-      if (isNew) {
-        return [...old, { ...payload, id: Math.random().toString(), userId: user.id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }];
-      } else {
-        return old.map(t => t.id === localTask.id ? { ...t, ...payload } : t);
-      }
+      if (isNew) return [...old, { ...payload, id: Math.random().toString(), userId: user.id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }];
+      else return old.map(t => t.id === localTask.id ? { ...t, ...payload } : t);
     });
 
-    // Disparamos la petición en segundo plano
-    if (isNew) {
-      createTask.mutate({ data: { ...payload, userId: user.id } }, { onSettled: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
-    } else {
-      updateTask.mutate({ id: localTask.id!, data: payload }, { onSettled: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
-    }
-
+    if (isNew) createTask.mutate({ data: { ...payload, userId: user.id } }, { onSettled: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+    else updateTask.mutate({ id: localTask.id!, data: payload }, { onSettled: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
     onClose();
   };
 
@@ -197,27 +161,21 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
     if (newFecha && (!(localTask as any).fechaFin || (localTask as any).fechaFin === localTask.fechaVencimiento)) updates.fechaFin = newFecha;
     if (newHora && newHora !== localTask.horaInicio) {
       const [hours, minutes] = newHora.split(':').map(Number);
-      const endDate = new Date();
-      endDate.setHours(hours + 1, minutes);
+      const endDate = new Date(); endDate.setHours(hours + 1, minutes);
       updates.horaVencimiento = format(endDate, 'HH:mm');
     }
     const numVal = parseInt(notifValue);
     if (!isNaN(numVal) && numVal > 0) {
       const absTime = getAbsoluteNotifTime(newFecha, newHora, numVal, notifUnit);
-      updates.fechaNotificacion = absTime.fechaNotificacion;
-      updates.horaNotificacion = absTime.horaNotificacion;
+      updates.fechaNotificacion = absTime.fechaNotificacion; updates.horaNotificacion = absTime.horaNotificacion;
     }
     updateLocal(updates);
   };
 
   const handleNotifChange = (val: string, unit: string) => {
-    setNotifValue(val);
-    setNotifUnit(unit);
+    setNotifValue(val); setNotifUnit(unit);
     const numVal = parseInt(val);
-    if (isNaN(numVal) || numVal <= 0) {
-      updateLocal({ fechaNotificacion: null, horaNotificacion: null });
-      return;
-    }
+    if (isNaN(numVal) || numVal <= 0) { updateLocal({ fechaNotificacion: null, horaNotificacion: null }); return; }
     const absTime = getAbsoluteNotifTime(localTask.fechaVencimiento || null, localTask.horaInicio || null, numVal, unit);
     updateLocal(absTime);
   };
@@ -229,13 +187,11 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
 
   const saveNewProject = () => {
     if (newProjectName.trim()) updateLocal({ proyecto: newProjectName.trim() });
-    setIsCreatingProject(false);
-    setNewProjectName("");
+    setIsCreatingProject(false); setNewProjectName("");
   };
 
   const handleAddLink = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLink.trim()) return;
+    e.preventDefault(); if (!newLink.trim()) return;
     const formattedLink = newLink.trim().startsWith('http') ? newLink.trim() : `https://${newLink.trim()}`;
     updateLocal({ links: [...(localTask.links || []), formattedLink] });
     setIsAddingLink(false); setNewLink("");
@@ -260,30 +216,24 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) onClose(); }}>
       <DialogContent className="bg-white border border-gray-100/50 shadow-2xl w-[95vw] sm:w-[calc(100vw-4rem)] max-w-4xl rounded-3xl p-0 gap-0 overflow-hidden [&>button]:hidden">
-
-        {/* CABECERA */}
         <div className="p-6 border-b border-gray-100/50 flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
             <Checkbox completada={localTask.completada || false} onToggle={() => updateLocal({ completada: !localTask.completada })} />
-            <input value={localTask.titulo || ''} onChange={(e) => updateLocal({ titulo: e.target.value })} placeholder="Título de la tarea" className="text-2xl font-semibold text-gray-900 bg-transparent border-none focus:ring-0 p-0 w-full outline-none" />
+            <input value={localTask.titulo || ''} onChange={(e) => updateLocal({ titulo: e.target.value })} placeholder={t('modal.title')} className="text-2xl font-semibold text-gray-900 bg-transparent border-none focus:ring-0 p-0 w-full outline-none" />
           </div>
           <div className="flex items-center gap-2">
-            <DeleteConfirmButton onDelete={handleDelete} />
-            <button onClick={handleSave} className="w-9 h-9 flex items-center justify-center bg-black hover:bg-gray-800 text-white rounded-xl transition-colors shadow-sm">
-              <Check className="w-5 h-5" />
-            </button>
+            <DeleteConfirmButton onDelete={handleDelete} t={t} />
+            <button onClick={handleSave} className="w-9 h-9 flex items-center justify-center bg-black hover:bg-gray-800 text-white rounded-xl transition-colors shadow-sm"><Check className="w-5 h-5" /></button>
           </div>
         </div>
 
-        {/* CONTENIDO */}
         <div className="p-6 max-h-[75vh] overflow-y-auto no-scrollbar space-y-8">
           <RichTextEditor content={localTask.descripcion || ''} onChange={(html) => updateLocal({ descripcion: html })} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* COLUMNA 1: Programación */}
             <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col justify-center gap-5">
               <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-medium text-gray-900 w-12">Desde</span>
+                <span className="text-sm font-medium text-gray-900 w-12">{t('modal.from')}</span>
                 <div className="relative w-full max-w-[140px]">
                   <input type="date" value={localTask.fechaVencimiento || ''} onChange={(e) => handleDesdeChange(e.target.value || null, localTask.horaInicio || null)} className="pill-input" />
                   {localTask.fechaVencimiento && <button onPointerDown={(e) => { e.preventDefault(); handleDesdeChange(null, localTask.horaInicio || null); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
@@ -294,7 +244,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
                 </div>
               </div>
               <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-medium text-gray-900 w-12">hasta</span>
+                <span className="text-sm font-medium text-gray-900 w-12">{t('modal.to')}</span>
                 <div className="relative w-full max-w-[140px]">
                   <input type="date" value={(localTask as any).fechaFin || ''} onChange={(e) => updateLocal({ fechaFin: e.target.value || null } as any)} className="pill-input" />
                   {(localTask as any).fechaFin && <button onPointerDown={(e) => { e.preventDefault(); updateLocal({ fechaFin: null } as any); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
@@ -306,39 +256,34 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
               </div>
             </div>
 
-            {/* COLUMNA 2: Notificación y Proyecto */}
             <div className="flex flex-col gap-4">
               <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex items-center justify-between gap-4 flex-1">
-                <span className="text-sm font-medium text-gray-900">Notificación</span>
+                <span className="text-sm font-medium text-gray-900">{t('tasks.col.notif')}</span>
                 <div className="flex items-center gap-2">
                   <input type="number" inputMode="numeric" pattern="[0-9]*" value={notifValue} onChange={e => handleNotifChange(e.target.value.replace(/[^0-9]/g, ''), notifUnit)} className="w-16 bg-white border border-gray-200 rounded-xl px-2 py-2 text-sm text-center font-medium text-gray-700 focus:ring-1 focus:ring-black outline-none shadow-sm" placeholder="0" />
                   <Select value={notifUnit} onValueChange={(val) => handleNotifChange(notifValue, val)}>
-                    <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-xl">
-                      <SelectItem value="minutos">minutos</SelectItem>
-                      <SelectItem value="horas">horas</SelectItem>
-                      <SelectItem value="dias">días</SelectItem>
+                      <SelectItem value="minutos">{t('modal.mins')}</SelectItem>
+                      <SelectItem value="horas">{t('modal.hours')}</SelectItem>
+                      <SelectItem value="dias">{t('modal.days')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex items-center justify-between gap-4 flex-1">
-                <span className="text-sm font-medium text-gray-900">Proyecto</span>
+                <span className="text-sm font-medium text-gray-900">{t('tasks.col.project')}</span>
                 <div className="flex items-center gap-2">
                   <Folder className="w-4 h-4 text-gray-400" />
                   {isCreatingProject ? (
                     <input autoFocus type="text" value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} onBlur={saveNewProject} onKeyDown={(e) => e.key === 'Enter' && saveNewProject()} placeholder="Nombre..." className="bg-transparent border-0 p-0 text-sm text-gray-900 focus:ring-0 outline-none w-full max-w-[120px]" />
                   ) : (
                     <Select value={localTask.proyecto || "none"} onValueChange={handleProjectSelect}>
-                      <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm w-auto min-w-[120px]">
-                        <SelectValue placeholder="Ninguno" />
-                      </SelectTrigger>
+                      <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm w-auto min-w-[120px]"><SelectValue placeholder={t('modal.none')} /></SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        <SelectItem value="__new__" className="font-medium text-blue-600">+ Crear nuevo</SelectItem>
-                        <SelectItem value="none" className="text-gray-400">Ninguno</SelectItem>
+                        <SelectItem value="__new__" className="font-medium text-blue-600">{t('modal.create')}</SelectItem>
+                        <SelectItem value="none" className="text-gray-400">{t('modal.none')}</SelectItem>
                         {projects.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -348,33 +293,24 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
             </div>
           </div>
 
-          {/* ADJUNTOS Y ENLACES */}
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               {isAddingLink ? (
                 <form onSubmit={handleAddLink} className="flex flex-1 gap-2">
                   <input autoFocus type="text" value={newLink} onChange={e => setNewLink(e.target.value)} placeholder="https://..." className="flex-1 text-sm bg-gray-50 border-0 rounded-lg px-3 py-2 outline-none" />
-                  <button type="submit" className="bg-black text-white px-3 py-2 rounded-lg text-sm font-medium">Añadir</button>
-                  <button type="button" onClick={() => setIsAddingLink(false)} className="px-3 py-2 text-sm text-gray-500 font-medium hover:bg-gray-50 rounded-lg">Cancelar</button>
+                  <button type="submit" className="bg-black text-white px-3 py-2 rounded-lg text-sm font-medium">{t('modal.add')}</button>
+                  <button type="button" onClick={() => setIsAddingLink(false)} className="px-3 py-2 text-sm text-gray-500 font-medium hover:bg-gray-50 rounded-lg">{t('habits.cancel')}</button>
                 </form>
               ) : (
-                <button onClick={() => setIsAddingLink(true)} className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-black hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors">
-                  <Plus className="w-4 h-4" /> Enlace
-                </button>
+                <button onClick={() => setIsAddingLink(true)} className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-black hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"><Plus className="w-4 h-4" /> {t('modal.link')}</button>
               )}
               <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
-              <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-black hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors">
-                <Plus className="w-4 h-4" /> Archivo
-              </button>
+              <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-black hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"><Plus className="w-4 h-4" /> {t('modal.file')}</button>
             </div>
             {(localTask.links && localTask.links.length > 0) || (localTask.attachments && localTask.attachments.length > 0) ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {localTask.links?.map((link, i) => (
-                  <LinkPreview key={i} url={link} onRemove={() => removeLink(link)} />
-                ))}
-                {localTask.attachments?.map((att) => (
-                  <AttachmentPreview key={att.id} att={att} onRemove={() => removeAttachment(att.id)} />
-                ))}
+                {localTask.links?.map((link, i) => <LinkPreview key={i} url={link} onRemove={() => removeLink(link)} />)}
+                {localTask.attachments?.map((att) => <AttachmentPreview key={att.id} att={att} onRemove={() => removeAttachment(att.id)} />)}
               </div>
             ) : null}
           </div>

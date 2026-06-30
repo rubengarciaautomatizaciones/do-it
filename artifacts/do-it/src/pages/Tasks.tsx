@@ -11,19 +11,18 @@ import { Loader2 } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Onboarding } from '../components/Onboarding';
-
+import { useTranslation } from '../contexts/I18nContext';
 
 export default function Tasks() {
   const { data: tasks, isLoading } = useGetTasks();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
-  // Inicializamos leyendo de localStorage (o valor por defecto)
   const [filter, setFilter] = useState(() => localStorage.getItem("doit_filter") || "todas"); 
   const [sortBy, setSortBy] = useState(() => localStorage.getItem("doit_sortBy") || "orden");
   const [projectFilter, setProjectFilter] = useState(() => localStorage.getItem("doit_projectFilter") || "Todos");
 
-  // Guardamos en localStorage cada vez que cambian
   useEffect(() => { localStorage.setItem("doit_filter", filter); }, [filter]);
   useEffect(() => { localStorage.setItem("doit_sortBy", sortBy); }, [sortBy]);
   useEffect(() => { localStorage.setItem("doit_projectFilter", projectFilter); }, [projectFilter]);
@@ -75,50 +74,47 @@ export default function Tasks() {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-white overflow-hidden">
-
       <div className="px-3 md:px-6 pt-12 pb-4 flex-shrink-0 w-full max-w-[1600px] mx-auto bg-white z-20">
-        <h1 className="text-3xl font-semibold tracking-tight text-[#111111] mb-6">
-          Tareas
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-[#111111] mb-6">{t('tasks.title')}</h1>
 
         <div className="bg-gray-50 border border-gray-100 p-1.5 rounded-full flex flex-row flex-nowrap items-center gap-2 w-fit max-w-full overflow-x-auto no-scrollbar">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0 whitespace-nowrap">
-              <SelectValue placeholder="Estado..." />
+              <SelectValue placeholder={t('tasks.filter.status')} />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem value="todas">Todas</SelectItem>
-              <SelectItem value="sin_hacer">Sin Hacer</SelectItem>
-              <SelectItem value="hechas">Hechas</SelectItem>
+              <SelectItem value="todas">{t('tasks.filter.all')}</SelectItem>
+              <SelectItem value="sin_hacer">{t('tasks.filter.todo')}</SelectItem>
+              <SelectItem value="hechas">{t('tasks.filter.done')}</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0 whitespace-nowrap">
-              <SelectValue placeholder="Ordenar por..." />
+              <SelectValue placeholder={t('tasks.sort.by')} />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem value="orden">Orden manual</SelectItem>
-              <SelectItem value="fecha_limite">Fecha límite</SelectItem>
-              <SelectItem value="recientes">Más recientes</SelectItem>
-              <SelectItem value="antiguas">Más antiguas</SelectItem>
-              <SelectItem value="modificacion">Última modificación</SelectItem>
-              <SelectItem value="proyecto">Proyecto (A-Z)</SelectItem>
+              <SelectItem value="orden">{t('tasks.sort.manual')}</SelectItem>
+              <SelectItem value="fecha_limite">{t('tasks.sort.date')}</SelectItem>
+              <SelectItem value="recientes">{t('tasks.sort.recent')}</SelectItem>
+              <SelectItem value="antiguas">{t('tasks.sort.old')}</SelectItem>
+              <SelectItem value="modificacion">{t('tasks.sort.mod')}</SelectItem>
+              <SelectItem value="proyecto">{t('tasks.sort.project')}</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={projectFilter} onValueChange={setProjectFilter}>
             <SelectTrigger className="bg-white rounded-full border border-gray-100/50 shadow-sm text-sm font-medium px-4 py-1.5 h-auto focus:ring-0 focus:ring-offset-0 whitespace-nowrap">
-              <SelectValue placeholder="Proyecto..." />
+              <SelectValue placeholder={t('tasks.project.filter')} />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              {projects.map(p => <SelectItem key={p} value={p}>{p || "Sin proyecto"}</SelectItem>)}
+              {projects.map(p => <SelectItem key={p} value={p}>{p === "Todos" ? t('tasks.filter.all') : (p || t('tasks.project.none'))}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <div id="tour-task-list"className="flex-1 relative w-full max-w-[1600px] mx-auto px-2 md:px-6 flex flex-col min-h-0">
+      <div id="tour-task-list" className="flex-1 relative w-full max-w-[1600px] mx-auto px-2 md:px-6 flex flex-col min-h-0">
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
         ) : isMobile ? (
@@ -137,12 +133,12 @@ export default function Tasks() {
               <thead className="bg-gray-50/95 backdrop-blur-sm text-gray-500 border-b border-gray-100 sticky top-0 z-20">
                 <tr>
                   <th className="w-14 p-3 text-center font-medium"></th>
-                  <th className="w-2/12 p-3 font-medium">Título</th>
-                  <th className="w-3/12 p-3 font-medium">Descripción</th>
-                  <th className="w-32 p-3 font-medium">Límite</th>
-                  <th className="w-32 p-3 font-medium">Notificación</th>
-                  <th className="w-28 p-3 font-medium">Proyecto</th>
-                  <th className="w-24 p-3 font-medium">Adjuntos</th>
+                  <th className="w-2/12 p-3 font-medium">{t('tasks.col.title')}</th>
+                  <th className="w-3/12 p-3 font-medium">{t('tasks.col.desc')}</th>
+                  <th className="w-32 p-3 font-medium">{t('tasks.col.limit')}</th>
+                  <th className="w-32 p-3 font-medium">{t('tasks.col.notif')}</th>
+                  <th className="w-28 p-3 font-medium">{t('tasks.col.project')}</th>
+                  <th className="w-24 p-3 font-medium">{t('tasks.col.attach')}</th>
                   <th className="w-16 p-3 font-medium"></th>
                 </tr>
               </thead>
@@ -162,10 +158,7 @@ export default function Tasks() {
         )}
       </div>
 
-      {/* Fondo blanco sólido solo hasta la base del input */}
       <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-24 bg-white z-30" />
-
-      {/* Degradado que empieza justo detrás del input hacia arriba */}
       <div className="pointer-events-none fixed bottom-24 left-0 right-0 h-15 bg-gradient-to-t from-white via-white/50 to-transparent z-30" />
 
       <Onboarding />
