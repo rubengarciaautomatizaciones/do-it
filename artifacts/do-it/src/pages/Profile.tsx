@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BottomTabBar } from '../components/BottomTabBar';
-import { LogOut, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
+import { LogOut, CreditCard, Settings, Bell, HelpCircle, Loader2, Calendar as CalendarIcon, Trash2, Globe, CalendarDays } from 'lucide-react';
 import { useGetPreferences, useUpdatePreferences, useCreatePortal, useDeleteAccount, getGetPreferencesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,7 +11,6 @@ import { supabase } from '../lib/supabase';
 import { useToast } from '../hooks/use-toast';
 import { useTranslation } from '../contexts/I18nContext';
 
-// ... (mantén la función urlBase64ToUint8Array y ProfileItem / ProfileSelectRow igual que antes)
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -19,27 +18,6 @@ function urlBase64ToUint8Array(base64String: string) {
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
   return outputArray;
-}
-
-function ProfileItem({ icon: Icon, label, value, onClick, isDestructive, rightElement }: any) {
-  return (
-    <button onClick={onClick} disabled={!onClick && !rightElement} className={`w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0 ${isDestructive ? 'text-black font-semibold' : 'text-gray-900'}`}>
-      <div className="flex items-center gap-3"><Icon className="w-5 h-5 opacity-70" /><span className="text-[15px]">{label}</span></div>
-      <div className="flex items-center gap-2">{value && <span className="text-[15px] text-gray-400">{value}</span>}{rightElement ? rightElement : (onClick && !isDestructive && <ChevronRight className="w-4 h-4 text-gray-300" />)}</div>
-    </button>
-  );
-}
-
-function ProfileSelectRow({ icon: Icon, label, value, options, onChange }: any) {
-  return (
-    <div className="w-full flex items-center justify-between p-4 bg-white border-b border-gray-100 last:border-0 text-gray-900">
-      <div className="flex items-center gap-3"><Icon className="w-5 h-5 opacity-70" /><span className="text-[15px]">{label}</span></div>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent shadow-none focus:ring-0 text-[15px] text-gray-400 [&>svg]:hidden"><SelectValue /></SelectTrigger>
-        <SelectContent align="end" className="rounded-xl">{options.map((opt:any) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
-      </Select>
-    </div>
-  );
 }
 
 export default function Profile() {
@@ -52,6 +30,7 @@ export default function Profile() {
   const createPortal = useCreatePortal();
   const deleteAccount = useDeleteAccount();
 
+  // Estados de Modales
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -67,13 +46,15 @@ export default function Profile() {
   const [deletePassword, setDeletePassword] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+  const [isDisconnectingCalendar, setIsDisconnectingCalendar] = useState(false);
+
   const [pushStatus, setPushStatus] = useState<boolean>(false);
 
   useEffect(() => {
     if (!('Notification' in window)) return;
     setPushStatus(Notification.permission === 'granted');
 
-    // Si viene del enlace mágico, abrimos el modal en modo recuperación (sin pedir pass actual)
     if (window.location.search.includes('recovery=true')) {
       setIsRecoveryMode(true);
       setIsPasswordModalOpen(true);
@@ -90,12 +71,10 @@ export default function Profile() {
     setIsUpdatingPassword(true);
 
     try {
-      // Si NO es recuperación, verificamos la contraseña actual primero
       if (!isRecoveryMode && user?.email) {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
         if (signInError) throw new Error("La contraseña actual es incorrecta.");
       }
-
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
@@ -115,7 +94,6 @@ export default function Profile() {
     setIsDeleting(true);
 
     try {
-      // Verificamos identidad
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: deletePassword });
       if (signInError) throw new Error("Contraseña incorrecta.");
 
@@ -151,66 +129,183 @@ export default function Profile() {
     }
   };
 
-  // ... (mantén handleEnablePush y handleGoogleConnect igual)
-  const handleGoogleConnect = async () => {
+  const handleGoogleClick = async () => {
     if (!user) return;
     if (prefs?.googleRefreshToken) {
-      await fetch(`/api/calendar/disconnect`, { method: 'POST', headers: { 'x-user-id': user.id } });
-      queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() });
-      toast({ title: "Desconectado", description: "Google Calendar ha sido desvinculado." });
+      setIsCalendarModalOpen(true); // Abrir modal de confirmación
     } else {
       const res = await fetch(`/api/calendar/connect?userId=${user.id}`).then(r => r.json());
       if (res.url) window.location.href = res.url;
     }
   };
 
-  const handleEnablePush = async (checked: boolean) => {
-    if (!checked) return toast({ title: "Aviso", description: "Desactívalo desde los ajustes de tu dispositivo." });
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) return toast({ title: "Error", description: "No soportado.", variant: "destructive" });
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') { setPushStatus(false); return toast({ title: "Permiso denegado", variant: "destructive" }); }
+  const confirmDisconnectCalendar = async () => {
+    if (!user) return;
+    setIsDisconnectingCalendar(true);
     try {
+      await fetch(`/api/calendar/disconnect`, { method: 'POST', headers: { 'x-user-id': user.id } });
+      queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() });
+      toast({ title: "Desconectado", description: "Google Calendar ha sido desvinculado." });
+      setIsCalendarModalOpen(false);
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudo desconectar.", variant: "destructive" });
+    } finally {
+      setIsDisconnectingCalendar(false);
+    }
+  };
+
+  const handleEnablePush = async (checked: boolean) => {
+    if (!checked) return toast({ title: "Aviso", description: "Desactívalo desde los ajustes de tu navegador o sistema operativo." });
+
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      return toast({ title: "Error", description: "Tu navegador no soporta notificaciones Push.", variant: "destructive" });
+    }
+
+    if (Notification.permission === 'denied') {
+      return toast({ title: "Permiso bloqueado", description: "Has bloqueado las notificaciones. Debes permitirlas en el candado de la barra de direcciones de tu navegador.", variant: "destructive" });
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') { 
+        setPushStatus(false); 
+        return toast({ title: "Permiso denegado", description: "No podemos enviarte notificaciones sin tu permiso.", variant: "destructive" }); 
+      }
+
       const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY) });
-      await fetch('/api/notifications/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user-id': user!.id }, body: JSON.stringify({ userId: user!.id, subscription }) });
-      setPushStatus(true); toast({ title: "¡Listo!" });
-    } catch (error: any) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+      const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+      if (!vapidKey) throw new Error("Falta la clave VAPID en el servidor.");
+
+      const subscription = await registration.pushManager.subscribe({ 
+        userVisibleOnly: true, 
+        applicationServerKey: urlBase64ToUint8Array(vapidKey) 
+      });
+
+      await fetch('/api/notifications/subscribe', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json', 'x-user-id': user!.id }, 
+        body: JSON.stringify({ userId: user!.id, subscription }) 
+      });
+
+      setPushStatus(true); 
+      toast({ title: "¡Listo!", description: "Notificaciones activadas correctamente." });
+    } catch (error: any) { 
+      toast({ title: "Error", description: error.message, variant: "destructive" }); 
+    }
+  };
+
+  const handleManageSubscription = () => {
+    if (!user) return;
+    createPortal.mutate({ data: { userId: user.id } }, { 
+      onSuccess: (res) => { 
+        if (res.url) window.location.href = res.url; 
+      },
+      onError: (err: any) => {
+        toast({ title: "No disponible", description: "No tienes una suscripción activa en Stripe asociada a esta cuenta.", variant: "destructive" });
+      }
+    });
   };
 
   return (
     <div className="min-h-[100dvh] bg-[#F9FAFB] pb-32">
+      {/* HERO */}
       <div className="flex flex-col items-center justify-center pt-16 pb-8 px-6">
         <div className="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center text-3xl font-medium mb-4 shadow-sm">{user?.email?.[0]?.toUpperCase() || ''}</div>
         <h2 className="text-xl font-semibold text-gray-900">{user?.email}</h2>
         <span className="mt-2 px-3 py-1 bg-gray-200 text-black text-xs font-semibold tracking-wide uppercase rounded-full">{prefs?.isPremium ? t('profile.plan.premium') : t('profile.plan.free')}</span>
       </div>
 
-      <div className="px-4 md:px-6 max-w-2xl mx-auto space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          {isLoading || !prefs ? <div className="p-4 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div> : (
-            <>
-              <ProfileSelectRow icon={Settings} label={t('profile.language')} value={prefs.idioma} onChange={(val: string) => handlePrefChange('idioma', val)} options={[{label: 'Español', value: 'es'}, {label: 'English', value: 'en'}]} />
-              <ProfileSelectRow icon={Settings} label={t('profile.weekStart')} value={prefs.inicioSemana} onChange={(val: string) => handlePrefChange('inicioSemana', val)} options={[{label: t('profile.monday'), value: 'lunes'}, {label: t('profile.sunday'), value: 'domingo'}]} />
-              <ProfileItem icon={CalendarIcon} label={t('profile.googleCalendar')} value={prefs.googleRefreshToken ? t('profile.connected') : t('profile.disconnected')} onClick={handleGoogleConnect} />
-            </>
-          )}
-        </div>
+      <div className="px-4 md:px-6 max-w-2xl mx-auto space-y-3">
 
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <ProfileItem icon={Bell} label={t('profile.push')} rightElement={<Switch checked={pushStatus} onCheckedChange={handleEnablePush} />} />
-          <ProfileItem icon={Settings} label={t('profile.changePassword')} onClick={() => {setIsRecoveryMode(false); setIsPasswordModalOpen(true);}} />
-        </div>
+        {isLoading || !prefs ? (
+          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
+        ) : (
+          <>
+            {/* SELECTORES ESTILO CALENDARIO */}
+            <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3"><Globe className="w-5 h-5 text-gray-400" /><span className="text-[15px] font-medium text-gray-900">{t('profile.language')}</span></div>
+              <Select value={prefs.idioma} onValueChange={(val: string) => handlePrefChange('idioma', val)}>
+                <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-4 text-sm font-medium shadow-sm w-auto gap-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          {prefs?.isPremium && <ProfileItem icon={CreditCard} label={createPortal.isPending ? "..." : t('profile.manageSub')} onClick={() => createPortal.mutate({ data: { userId: user!.id } }, { onSuccess: (res) => { if (res.url) window.location.href = res.url; } })} />}
-          <ProfileItem icon={HelpCircle} label={t('profile.support')} onClick={() => setIsSupportModalOpen(true)} />
-        </div>
+            <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3"><CalendarDays className="w-5 h-5 text-gray-400" /><span className="text-[15px] font-medium text-gray-900">{t('profile.weekStart')}</span></div>
+              <Select value={prefs.inicioSemana} onValueChange={(val: string) => handlePrefChange('inicioSemana', val)}>
+                <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-4 text-sm font-medium shadow-sm w-auto gap-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="lunes">{t('profile.monday')}</SelectItem>
+                  <SelectItem value="domingo">{t('profile.sunday')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm mt-8">
-          <ProfileItem icon={LogOut} label={t('profile.logout')} onClick={() => signOut()} />
-          <ProfileItem icon={Trash2} label={t('profile.deleteAccount')} onClick={() => setIsDeleteModalOpen(true)} isDestructive />
-        </div>
+            {/* BOTONES DE ACCIÓN (Tarjetas independientes) */}
+            <button onClick={handleGoogleClick} className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all">
+              <div className="flex items-center gap-3"><CalendarIcon className="w-5 h-5 text-gray-400" /><span className="text-[15px] font-medium text-gray-900">{t('profile.googleCalendar')}</span></div>
+              <span className={`text-xs font-semibold px-3 py-1 rounded-full ${prefs.googleRefreshToken ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                {prefs.googleRefreshToken ? t('profile.connected') : t('profile.disconnected')}
+              </span>
+            </button>
+
+            <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3"><Bell className="w-5 h-5 text-gray-400" /><span className="text-[15px] font-medium text-gray-900">{t('profile.push')}</span></div>
+              <Switch checked={pushStatus} onCheckedChange={handleEnablePush} />
+            </div>
+
+            <button onClick={() => {setIsRecoveryMode(false); setIsPasswordModalOpen(true);}} className="w-full flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all text-left">
+              <Settings className="w-5 h-5 text-gray-400" /><span className="text-[15px] font-medium text-gray-900">{t('profile.changePassword')}</span>
+            </button>
+
+            {prefs?.isPremium && (
+              <button onClick={handleManageSubscription} disabled={createPortal.isPending} className="w-full flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all text-left disabled:opacity-50">
+                {createPortal.isPending ? <Loader2 className="w-5 h-5 text-gray-400 animate-spin" /> : <CreditCard className="w-5 h-5 text-gray-400" />}
+                <span className="text-[15px] font-medium text-gray-900">{t('profile.manageSub')}</span>
+              </button>
+            )}
+
+            <button onClick={() => setIsSupportModalOpen(true)} className="w-full flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all text-left">
+              <HelpCircle className="w-5 h-5 text-gray-400" /><span className="text-[15px] font-medium text-gray-900">{t('profile.support')}</span>
+            </button>
+
+            {/* ZONA DE PELIGRO */}
+            <div className="pt-6 space-y-3">
+              <button onClick={() => signOut()} className="w-full flex items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all text-gray-900 font-medium">
+                <LogOut className="w-5 h-5" /> {t('profile.logout')}
+              </button>
+
+              <button onClick={() => setIsDeleteModalOpen(true)} className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 rounded-2xl border border-red-100 shadow-sm hover:bg-red-100 active:scale-[0.98] transition-all text-red-600 font-medium">
+                <Trash2 className="w-5 h-5" /> {t('profile.deleteAccount')}
+              </button>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* MODAL DESCONECTAR CALENDARIO */}
+      <Dialog open={isCalendarModalOpen} onOpenChange={setIsCalendarModalOpen}>
+        <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl [&>button]:hidden">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Desconectar Calendario</DialogTitle>
+            <DialogDescription>¿Estás seguro de que quieres desvincular tu cuenta de Google Calendar? Tus tareas dejarán de sincronizarse.</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => setIsCalendarModalOpen(false)} className="flex-1 bg-gray-100 text-black rounded-xl py-3 font-medium active:scale-95 transition-transform">Cancelar</button>
+            <button onClick={confirmDisconnectCalendar} disabled={isDisconnectingCalendar} className="flex-1 bg-red-500 text-white rounded-xl py-3 font-medium disabled:opacity-50 flex justify-center active:scale-95 transition-transform">
+              {isDisconnectingCalendar ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Desconectar'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* MODAL CONTRASEÑA */}
       <Dialog open={isPasswordModalOpen} onOpenChange={(open) => {setIsPasswordModalOpen(open); if(!open && isRecoveryMode) window.history.replaceState({}, document.title, "/profile");}}>
@@ -243,7 +338,7 @@ export default function Profile() {
             <input type="password" required value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} placeholder="Tu contraseña" className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-black" />
             <div className="flex gap-2">
               <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="flex-1 bg-gray-100 text-black rounded-xl py-3 font-medium active:scale-95 transition-transform">Cancelar</button>
-              <button type="submit" disabled={isDeleting || !deletePassword} className="flex-1 bg-black text-white rounded-xl py-3 font-medium disabled:opacity-50 flex justify-center active:scale-95 transition-transform">{isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Eliminar'}</button>
+              <button type="submit" disabled={isDeleting || !deletePassword} className="flex-1 bg-red-500 text-white rounded-xl py-3 font-medium disabled:opacity-50 flex justify-center active:scale-95 transition-transform">{isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Eliminar'}</button>
             </div>
           </form>
         </DialogContent>
