@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
-import { Mic, Calendar, Target, ArrowRight, Check, Minus, ChevronLeft, ChevronRight, Zap, CheckCircle2 } from 'lucide-react';
+// AQUÍ ESTABA EL ERROR: Faltaba importar 'Clock'
+import { Mic, Calendar, Target, ArrowRight, Check, Minus, ChevronLeft, ChevronRight, Zap, Clock } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react';
 
 // --- COMPONENTE: CARRUSEL REALISTA ---
@@ -174,8 +175,12 @@ export default function Landing() {
         {/* HERO SECTION (Más compacto) */}
         <section className="w-full max-w-3xl mx-auto px-6 pt-8 pb-4 text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }}>
+            <span className="inline-block py-1.5 px-4 rounded-full bg-white border border-gray-200 text-black text-xs font-bold tracking-widest uppercase mb-8 shadow-sm">
+              Ponlo y hazlo
+            </span>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-black mb-6 leading-[1.05]">
-              Ponlo y hazlo.
+              Productividad <br className="hidden md:block" />
+              <span className="text-gray-300">sin fricción.</span>
             </h1>
             <p className="text-lg md:text-xl text-gray-500 mb-8 max-w-xl mx-auto font-medium leading-relaxed">
               El gestor minimalista con IA que no existía. Así que lo construí.
@@ -276,10 +281,10 @@ export default function Landing() {
                 <ul className="space-y-4 mb-8 flex-1">
                   <li className="flex items-center gap-3 text-gray-300 font-medium text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Tareas ilimitadas</li>
                   <li className="flex items-center gap-3 text-gray-300 font-medium text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Notificaciones Push</li>
-                  <li className="flex items-center gap-3 text-gray-300 font-medium text-sm"><Check className="w-4 h-4 text-white shrink-0" /> IA Ilimitada</li>
-                  <li className="flex items-center gap-3 text-gray-300 font-medium text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Hábitos ilimitados</li>
-                  <li className="flex items-center gap-3 text-gray-300 font-medium text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Google Calendar</li>
-                  <li className="flex items-center gap-3 text-gray-300 font-medium text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Estadísticas avanzadas</li>
+                  <li className="flex items-center gap-3 text-white font-bold"><Check className="w-4 h-4 text-white shrink-0" /> IA Ilimitada</li>
+                  <li className="flex items-center gap-3 text-white font-bold"><Check className="w-4 h-4 text-white shrink-0" /> Hábitos ilimitados</li>
+                  <li className="flex items-center gap-3 text-white font-bold"><Check className="w-4 h-4 text-white shrink-0" /> Google Calendar</li>
+                  <li className="flex items-center gap-3 text-white font-bold"><Check className="w-4 h-4 text-white shrink-0" /> Estadísticas avanzadas</li>
                 </ul>
                 <Link href="/signup">
                   <button className="w-full bg-white text-black border-2 border-white rounded-xl py-3.5 font-bold hover:bg-black hover:text-white transition-colors text-sm">
