@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BottomTabBar } from '../components/BottomTabBar';
-import { LogOut, Settings, Bell, HelpCircle, ChevronRight, Loader2, Calendar as CalendarIcon, CreditCard } from 'lucide-react';
+import { LogOut, User, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
 import { useGetPreferences, useUpdatePreferences, useCreatePortal, useDeleteAccount, getGetPreferencesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -161,7 +161,7 @@ export default function Profile() {
       {/* HERO SECTION (iOS Style) */}
       <div className="flex flex-col items-center justify-center pt-16 pb-8 px-6">
         <div className="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center text-3xl font-medium mb-4 shadow-sm">
-          {user?.email?.[0].toUpperCase()}
+          {user?.email?.[0]?.toUpperCase() || ''}
         </div>
         <h2 className="text-xl font-semibold text-gray-900">{user?.email}</h2>
         <span className="mt-2 px-3 py-1 bg-gray-200 text-black text-xs font-semibold tracking-wide uppercase rounded-full">
