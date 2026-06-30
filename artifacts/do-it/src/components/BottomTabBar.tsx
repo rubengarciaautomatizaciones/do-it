@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { CheckSquare, CalendarDays, User } from 'lucide-react';
+import { CheckSquare, CalendarDays, User, Target } from 'lucide-react';
 import { useTranslation } from '../contexts/I18nContext';
 
 export function BottomTabBar() {
@@ -9,7 +9,7 @@ export function BottomTabBar() {
 
   const tabs = [
     { href: '/tasks', icon: CheckSquare, label: t('tab.tasks') },
-    { href: '/habits', icon: CalendarDays, label: t('tab.habits') },
+    { href: '/habits', icon: Target, label: t('tab.habits') },
     { href: '/calendar', icon: CalendarDays, label: t('tab.calendar') },
     { href: '/profile', icon: User, label: t('tab.profile') },
   ];

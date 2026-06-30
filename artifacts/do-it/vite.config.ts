@@ -5,7 +5,6 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { VitePWA } from "vite-plugin-pwa";
 
-// Fallbacks para que Vercel no falle si no encuentra estas variables
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 const basePath = process.env.BASE_PATH || "/";
 
@@ -17,13 +16,10 @@ export default defineConfig({
     runtimeErrorOverlay(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icono.png'],
+      includeAssets: ['favicon.png'], // <-- CAMBIADO
       workbox: {
-        // Le dice a la PWA que no intercepte las rutas del backend
         navigateFallbackDenylist: [/^\/api/],
-        // Inyecta nuestro código de notificaciones
         importScripts: ['/push-sw.js'],
-        // AUMENTO DE LÍMITE: Permite cachear archivos de hasta 5MB (evita el error de Vercel)
         maximumFileSizeToCacheInBytes: 5000000 
       },
       manifest: {
@@ -34,30 +30,15 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         icons: [
-          {
-            src: 'icono.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'icono.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'icono.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
+          { src: 'favicon.png', sizes: '192x192', type: 'image/png' }, // <-- CAMBIADO
+          { src: 'favicon.png', sizes: '512x512', type: 'image/png' }, // <-- CAMBIADO
+          { src: 'favicon.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' } // <-- CAMBIADO
         ]
       }
     }),
     ...(process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined
       ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({ root: path.resolve(import.meta.dirname, "..") })
-          ),
+          await import("@replit/vite-plugin-cartographer").then((m) => m.cartographer({ root: path.resolve(import.meta.dirname, "..") })),
           await import("@replit/vite-plugin-dev-banner").then((m) => m.devBanner()),
         ]
       : []),
@@ -70,27 +51,7 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   root: path.resolve(import.meta.dirname),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
-  },
-  server: {
-    port,
-    strictPort: true,
-    host: "0.0.0.0",
-    allowedHosts: true,
-    fs: { strict: true },
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-      }
-    }
-  },
-  preview: {
-    port,
-    host: "0.0.0.0",
-    allowedHosts: true,
-  },
+  build: { outDir: path.resolve(import.meta.dirname, "dist/public"), emptyOutDir: true },
+  server: { port, strictPort: true, host: "0.0.0.0", allowedHosts: true, fs: { strict: true }, proxy: { '/api': { target: 'http://localhost:8080', changeOrigin: true, secure: false } } },
+  preview: { port, host: "0.0.0.0", allowedHosts: true },
 });

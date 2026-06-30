@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 
@@ -97,7 +97,7 @@ export default function Login() {
               </div>
             )}
 
-            {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
+            {error && <p className="text-sm text-black font-medium">{error}</p>}
 
             <button
               type="submit"
@@ -107,14 +107,22 @@ export default function Login() {
               {loading ? 'Cargando...' : (isResetMode ? 'Enviar enlace mágico' : 'Entrar')}
             </button>
 
-            <div className="text-center mt-6">
+            <div className="text-center mt-6 space-y-4">
               <button 
                 type="button" 
                 onClick={() => { setIsResetMode(!isResetMode); setError(null); }} 
-                className="text-sm text-gray-500 hover:text-black transition-colors font-medium"
+                className="text-sm text-gray-500 hover:text-black transition-colors font-medium block w-full"
               >
                 {isResetMode ? 'Volver a iniciar sesión' : '¿Olvidaste tu contraseña?'}
               </button>
+
+              {!isResetMode && (
+                <Link href="/signup">
+                  <button type="button" className="text-sm text-black font-medium hover:text-gray-600 transition-colors">
+                    ¿No tienes cuenta? Regístrate
+                  </button>
+                </Link>
+              )}
             </div>
           </form>
         )}

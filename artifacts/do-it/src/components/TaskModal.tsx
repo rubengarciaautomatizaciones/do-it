@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useUpdateTask, useCreateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata, useGetTasks, getGetTasksQueryKey, Task } from '@workspace/api-client-react';
+import { useUpdateTask, useCreateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata, useGetTasks, getGetTasksQueryKey, Task, useGetPreferences } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link as LinkIcon, Plus, Mic, X, Folder, Loader2, Trash2, Check } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -13,6 +13,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../contexts/I18nContext';
+import { PaywallModal } from './PaywallModal';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -82,9 +83,9 @@ function DeleteConfirmButton({ onDelete, t }: { onDelete: () => void, t: any }) 
   return (
     <AnimatePresence mode="wait">
       {!isConfirming ? (
-        <motion.button key="trash" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setIsConfirming(true)} className="w-9 h-9 flex items-center justify-center bg-white hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-colors border border-gray-200 shadow-sm"><Trash2 className="w-4 h-4" /></motion.button>
+        <motion.button key="trash" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setIsConfirming(true)} className="w-9 h-9 flex items-center justify-center bg-white hover:bg-gray-100 text-gray-400 hover:text-black rounded-xl transition-colors border border-gray-200 shadow-sm"><Trash2 className="w-4 h-4" /></motion.button>
       ) : (
-        <motion.button key="confirm" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => { onDelete(); setIsConfirming(false); }} className="h-9 px-3 flex items-center justify-center bg-red-500 text-white text-xs font-medium rounded-xl shadow-sm">{t('profile.deleteAccount').split(' ')[0]}</motion.button>
+        <motion.button key="confirm" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => { onDelete(); setIsConfirming(false); }} className="h-9 px-3 flex items-center justify-center bg-black text-white text-xs font-medium rounded-xl shadow-sm">{t('profile.deleteAccount').split(' ')[0]}</motion.button>
       )}
     </AnimatePresence>
   );
@@ -100,6 +101,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
   const deleteTask = useDeleteTask();
   const addAttachment = useAddTaskAttachment();
   const { data: allTasks } = useGetTasks();
+  const { data: prefs } = useGetPreferences();
 
   const [localTask, setLocalTask] = useState<Partial<Task> | null>(null);
   const [notifValue, setNotifValue] = useState<string>('');
@@ -110,6 +112,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => {
     if (isOpen && task) {
@@ -202,6 +205,14 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user || !localTask.id) return toast({ title: "Guarda la tarea primero para subir archivos" });
+
+    // BLOQUEO PAYWALL (5MB)
+    if (file.size > 5 * 1024 * 1024 && !prefs?.isPremium) {
+      setShowPaywall(true);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     toast({ title: "Subiendo archivo..." });
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
@@ -316,6 +327,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
           </div>
         </div>
       </DialogContent>
+      <PaywallModal isOpen={showPaywall} onClose={() => setShowPaywall(false)} />
     </Dialog>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useGetHabits, useCreateHabit, useUpdateHabit, useDeleteHabit, useLogHabit, useUnlogHabit, getGetHabitsQueryKey } from '@workspace/api-client-react';
+import { useGetHabits, useCreateHabit, useUpdateHabit, useDeleteHabit, useLogHabit, useUnlogHabit, getGetHabitsQueryKey, useGetPreferences } from '@workspace/api-client-react';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { useAuth } from '../contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '../hooks/use-toast';
 import { useTranslation } from '../contexts/I18nContext';
+import { PaywallModal } from '../components/PaywallModal';
 
 function NumericHabitControl({ value, target, onChange }: { value: number, target: number, onChange: (val: number) => void }) {
   const [localVal, setLocalVal] = useState(value.toString());
@@ -53,6 +54,7 @@ export default function Habits() {
   const { t, lang } = useTranslation();
   const dateLocale = lang === 'es' ? es : enUS;
   const { data: allHabits, isLoading } = useGetHabits();
+  const { data: prefs } = useGetPreferences();
   const createHabit = useCreateHabit();
   const updateHabit = useUpdateHabit();
   const deleteHabit = useDeleteHabit();
@@ -66,6 +68,7 @@ export default function Habits() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const [fNombre, setFNombre] = useState('');
   const [fTipoMeta, setFTipoMeta] = useState('boolean');
@@ -195,19 +198,26 @@ export default function Habits() {
             </div>
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 h-[144px] flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <Select value={chartHabitFilter} onValueChange={setChartHabitFilter}>
+                <Select value={chartHabitFilter} onValueChange={(v) => {
+                  if (!prefs?.isPremium && v !== 'all') { setShowPaywall(true); return; }
+                  setChartHabitFilter(v);
+                }}>
                   <SelectTrigger className="h-6 text-xs bg-transparent border-0 p-0 shadow-none focus:ring-0 font-medium text-gray-600 w-auto"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-xl">
                     <SelectItem value="all">{t('habits.all')}</SelectItem>
                     {allHabits.map(h => <SelectItem key={h.id} value={h.id}>{h.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Select value={chartTimeFilter.toString()} onValueChange={(v) => setChartTimeFilter(parseInt(v))}>
+                <Select value={chartTimeFilter.toString()} onValueChange={(v) => {
+                  if (!prefs?.isPremium && v !== '7') { setShowPaywall(true); return; }
+                  setChartTimeFilter(parseInt(v));
+                }}>
                   <SelectTrigger className="h-6 text-xs bg-transparent border-0 p-0 shadow-none focus:ring-0 font-medium text-gray-400 w-auto"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-xl">
                     <SelectItem value="7">{t('habits.days.7')}</SelectItem>
                     <SelectItem value="30">{t('habits.days.30')}</SelectItem>
                     <SelectItem value="90">{t('habits.days.90')}</SelectItem>
+                    <SelectItem value="365">{t('habits.days.365')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -371,6 +381,8 @@ export default function Habits() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <PaywallModal isOpen={showPaywall} onClose={() => setShowPaywall(false)} />
       <BottomTabBar />
     </div>
   );

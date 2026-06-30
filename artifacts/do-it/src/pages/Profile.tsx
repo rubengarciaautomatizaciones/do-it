@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BottomTabBar } from '../components/BottomTabBar';
-import { LogOut, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2, Calendar as CalendarIcon, Trash2, Globe, CalendarDays } from 'lucide-react';
+import { LogOut, CreditCard, Settings, Bell, HelpCircle, ChevronRight, Loader2, Calendar as CalendarIcon, Trash2, Globe, CalendarDays, Download, Share, PlusSquare } from 'lucide-react';
 import { useGetPreferences, useUpdatePreferences, useCreatePortal, useDeleteAccount, getGetPreferencesQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from '../lib/supabase';
 import { useToast } from '../hooks/use-toast';
 import { useTranslation } from '../contexts/I18nContext';
+import { useIsMobile } from '../hooks/use-mobile';
+import { PaywallModal } from '../components/PaywallModal';
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -24,7 +26,7 @@ function ProfileItem({ icon: Icon, label, value, onClick, isDestructive, rightEl
   return (
     <button onClick={onClick} disabled={!onClick && !rightElement} className={`w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100 last:border-0 ${isDestructive ? 'text-black font-semibold' : 'text-gray-900'}`}>
       <div className="flex items-center gap-3"><Icon className="w-5 h-5 opacity-70" /><span className="text-[15px]">{label}</span></div>
-      <div className="flex items-center gap-2">{value && <span className="text-[15px] text-gray-400">{value}</span>}{rightElement ? rightElement : (onClick && <ChevronRight className="w-4 h-4 text-gray-300" />)}</div>
+      <div className="flex items-center gap-2">{value && <span className="text-[15px] text-gray-500 font-medium">{value}</span>}{rightElement ? rightElement : (onClick && <ChevronRight className="w-4 h-4 text-gray-300" />)}</div>
     </button>
   );
 }
@@ -34,7 +36,7 @@ function ProfileSelectRow({ icon: Icon, label, value, options, onChange }: any) 
     <div className="w-full flex items-center justify-between p-4 bg-white border-b border-gray-100 last:border-0 text-gray-900">
       <div className="flex items-center gap-3"><Icon className="w-5 h-5 opacity-70" /><span className="text-[15px]">{label}</span></div>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent shadow-none focus:ring-0 text-[15px] text-gray-400 [&>svg]:hidden"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent shadow-none focus:ring-0 text-[15px] text-gray-500 font-medium [&>svg]:hidden"><SelectValue /></SelectTrigger>
         <SelectContent align="end" className="rounded-xl">{options.map((opt:any) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
       </Select>
     </div>
@@ -45,13 +47,13 @@ export default function Profile() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { data: prefs, isLoading } = useGetPreferences();
   const updatePrefs = useUpdatePreferences();
   const createPortal = useCreatePortal();
   const deleteAccount = useDeleteAccount();
 
-  // Estados de Modales
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -71,6 +73,12 @@ export default function Profile() {
   const [isDisconnectingCalendar, setIsDisconnectingCalendar] = useState(false);
 
   const [pushStatus, setPushStatus] = useState<boolean>(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const [isInstalled, setIsInstalled] = useState(true);
+  const [isIOS, setIsIOS] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   useEffect(() => {
     if (!('Notification' in window)) return;
@@ -80,7 +88,44 @@ export default function Profile() {
       setIsRecoveryMode(true);
       setIsPasswordModalOpen(true);
     }
-  }, []);
+
+    const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsInstalled(checkStandalone);
+
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    setIsIOS(isIOSDevice);
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    if (isMobile && !checkStandalone && !sessionStorage.getItem('installPromptDismissed')) {
+      setTimeout(() => setShowInstallModal(true), 500);
+    }
+
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, [isMobile]);
+
+  const handleInstallClick = async () => {
+    if (isIOS) return;
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsInstalled(true);
+        setShowInstallModal(false);
+      }
+      setDeferredPrompt(null);
+    }
+  };
+
+  const closeInstallModal = () => {
+    sessionStorage.setItem('installPromptDismissed', 'true');
+    setShowInstallModal(false);
+  };
 
   const handlePrefChange = (key: 'idioma' | 'inicioSemana', value: string) => {
     updatePrefs.mutate({ data: { [key]: value } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() }) });
@@ -152,6 +197,13 @@ export default function Profile() {
 
   const handleGoogleClick = async () => {
     if (!user) return;
+
+    // BLOQUEO PAYWALL
+    if (!prefs?.isPremium && !prefs?.googleRefreshToken) {
+      setShowPaywall(true);
+      return;
+    }
+
     if (prefs?.googleRefreshToken) {
       setIsCalendarModalOpen(true);
     } else {
@@ -230,7 +282,6 @@ export default function Profile() {
 
   return (
     <div className="min-h-[100dvh] bg-[#F9FAFB] pb-32">
-      {/* HERO */}
       <div className="flex flex-col items-center justify-center pt-16 pb-8 px-6">
         <div className="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center text-3xl font-medium mb-4 shadow-sm">{user?.email?.[0]?.toUpperCase() || ''}</div>
         <h2 className="text-xl font-semibold text-gray-900">{user?.email}</h2>
@@ -243,35 +294,63 @@ export default function Profile() {
           <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
         ) : (
           <>
-            {/* BLOQUE 1: Preferencias */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
               <ProfileSelectRow icon={Globe} label={t('profile.language')} value={prefs.idioma} onChange={(val: string) => handlePrefChange('idioma', val)} options={[{label: 'Español', value: 'es'}, {label: 'English', value: 'en'}]} />
               <ProfileSelectRow icon={CalendarDays} label={t('profile.weekStart')} value={prefs.inicioSemana} onChange={(val: string) => handlePrefChange('inicioSemana', val)} options={[{label: t('profile.monday'), value: 'lunes'}, {label: t('profile.sunday'), value: 'domingo'}]} />
-              <ProfileItem icon={CalendarIcon} label={t('profile.googleCalendar')} value={prefs.googleRefreshToken ? t('profile.connected') : t('profile.disconnected')} onClick={handleGoogleClick} />
+              <button onClick={handleGoogleClick} className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100">
+                <div className="flex items-center gap-3"><CalendarIcon className="w-5 h-5 opacity-70" /><span className="text-[15px] text-gray-900">{t('profile.googleCalendar')}</span></div>
+                <span className="text-[15px] text-gray-500 font-medium">{prefs.googleRefreshToken ? t('profile.connected') : t('profile.disconnected')}</span>
+              </button>
             </div>
 
-            {/* BLOQUE 2: Seguridad y Notificaciones */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
               <ProfileItem icon={Bell} label={t('profile.push')} rightElement={<Switch checked={pushStatus} onCheckedChange={handleEnablePush} />} />
               <ProfileItem icon={Settings} label={t('profile.changePassword')} onClick={() => {setIsRecoveryMode(false); setIsPasswordModalOpen(true);}} />
             </div>
 
-            {/* BLOQUE 3: Suscripción y Soporte */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
               {prefs?.isPremium && <ProfileItem icon={CreditCard} label={createPortal.isPending ? "..." : t('profile.manageSub')} onClick={handleManageSubscription} />}
               <ProfileItem icon={HelpCircle} label={t('profile.support')} onClick={() => setIsSupportModalOpen(true)} />
             </div>
 
-            {/* BLOQUE 4: Zona de Peligro */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm mt-8">
-              <ProfileItem icon={LogOut} label={t('profile.logout')} onClick={() => signOut()} />
+              <ProfileItem icon={LogOut} label={t('profile.logout')} onClick={() => signOut()} isDestructive />
               <ProfileItem icon={Trash2} label={t('profile.deleteAccount')} onClick={() => setIsDeleteModalOpen(true)} isDestructive />
             </div>
           </>
         )}
       </div>
 
-      {/* MODAL DESCONECTAR CALENDARIO */}
+      <Dialog open={showInstallModal} onOpenChange={closeInstallModal}>
+        <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl [&>button]:hidden">
+          <DialogHeader>
+            <div className="w-12 h-12 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+              <Download className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl font-semibold text-center text-black">Instala la App</DialogTitle>
+            <DialogDescription className="text-center text-gray-500">
+              Añade Do it! a tu pantalla de inicio para una experiencia más rápida, a pantalla completa y con notificaciones.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-6">
+            {isIOS ? (
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-3 text-sm text-gray-600 font-medium">
+                <p className="flex items-center gap-2"><span className="w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-black">1</span> Toca el botón <Share className="w-4 h-4 mx-1 text-black" /> en la barra de Safari.</p>
+                <p className="flex items-center gap-2"><span className="w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-black">2</span> Selecciona <strong>Añadir a inicio</strong> <PlusSquare className="w-4 h-4 mx-1 text-black" />.</p>
+              </div>
+            ) : (
+              <button onClick={handleInstallClick} className="w-full bg-black text-white rounded-xl py-3.5 font-medium flex justify-center items-center gap-2 active:scale-95 transition-transform shadow-sm">
+                Instalar ahora
+              </button>
+            )}
+            <button onClick={closeInstallModal} className="w-full mt-3 text-sm font-medium text-gray-400 hover:text-black transition-colors py-2">
+              Quizás más tarde
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isCalendarModalOpen} onOpenChange={setIsCalendarModalOpen}>
         <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl [&>button]:hidden">
           <DialogHeader>
@@ -287,7 +366,6 @@ export default function Profile() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL CONTRASEÑA */}
       <Dialog open={isPasswordModalOpen} onOpenChange={(open) => {setIsPasswordModalOpen(open); if(!open && isRecoveryMode) window.history.replaceState({}, document.title, "/profile");}}>
         <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl [&>button]:hidden">
           <DialogHeader>
@@ -307,7 +385,6 @@ export default function Profile() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL ELIMINAR CUENTA */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
         <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl [&>button]:hidden">
           <DialogHeader>
@@ -324,7 +401,6 @@ export default function Profile() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL SOPORTE */}
       <Dialog open={isSupportModalOpen} onOpenChange={setIsSupportModalOpen}>
         <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl [&>button]:hidden">
           <DialogHeader>
@@ -350,6 +426,7 @@ export default function Profile() {
         </DialogContent>
       </Dialog>
 
+      <PaywallModal isOpen={showPaywall} onClose={() => setShowPaywall(false)} />
       <BottomTabBar />
     </div>
   );
