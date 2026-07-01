@@ -117,28 +117,6 @@ router.post("/tasks/magic-text", async (req, res) => {
 
   const { text, userId } = parsed.data;
 
-  let [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
-  if (!prefs) {
-    [prefs] = await db.insert(userPreferencesTable).values({ userId }).returning();
-  }
-
-  const now = new Date();
-  const resetDate = new Date(prefs.aiUsageResetDate);
-  const nextReset = new Date(resetDate);
-  nextReset.setMonth(nextReset.getMonth() + 1);
-
-  let currentUsage = prefs.aiUsageCount;
-  let newResetDate = prefs.aiUsageResetDate;
-
-  if (now >= nextReset) {
-    currentUsage = 0;
-    newResetDate = now;
-  }
-
-  if (!prefs.isPremium && currentUsage >= 3) {
-    return res.status(403).json({ error: "LIMIT_REACHED", message: "Has alcanzado el límite de 3 usos gratuitos." });
-  }
-
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
 
@@ -169,11 +147,6 @@ router.post("/tasks/magic-text", async (req, res) => {
     extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
     extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
     extractedTask.links = parsedData.links || [];
-
-    await db.update(userPreferencesTable).set({ 
-      aiUsageCount: currentUsage + 1,
-      aiUsageResetDate: newResetDate
-    }).where(eq(userPreferencesTable.userId, userId));
   } catch (err) {
     req.log.error({ err }, "Gemini text extraction failed");
   }

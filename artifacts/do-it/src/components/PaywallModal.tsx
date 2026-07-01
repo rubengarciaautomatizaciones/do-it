@@ -52,7 +52,7 @@ export function PaywallModal({ isOpen, onClose }: PaywallModalProps) {
           </div>
 
           <ul className="space-y-4 mb-8">
-            {['Creación de tareas por voz ilimitada', 'Extracción inteligente de fechas', 'Hábitos ilimitados', 'Sincronización con Google Calendar'].map((feature, i) => (
+            {['IA por voz ilimitada', 'Extracción inteligente de fechas', 'Hábitos ilimitados', 'Sincronización con Google Calendar'].map((feature, i) => (
               <li key={i} className="flex items-center gap-3 text-gray-700 font-medium">
                 <div className="w-5 h-5 rounded-full bg-black/5 flex items-center justify-center flex-shrink-0">
                   <Check className="w-3 h-3 text-black" />

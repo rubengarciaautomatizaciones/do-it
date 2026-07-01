@@ -381,13 +381,28 @@ export default function Landing() {
                   <span className="text-5xl font-bold text-black tracking-tighter">0€</span>
                   <span className="text-gray-500 font-medium text-sm">/para siempre</span>
                 </div>
-                <ul className="space-y-4 mb-8 flex-1">
-                  <li className="flex items-center gap-3 text-gray-700 font-medium text-sm"><Check className="w-4 h-4 text-black shrink-0" /> Tareas ilimitadas</li>
-                  <li className="flex items-center gap-3 text-gray-700 font-medium text-sm"><Check className="w-4 h-4 text-black shrink-0" /> Notificaciones Push</li>
-                  <li className="flex items-center gap-3 text-gray-700 font-medium text-sm"><Minus className="w-4 h-4 text-gray-300 shrink-0" /> 3 usos de IA al mes</li>
-                  <li className="flex items-center gap-3 text-gray-700 font-medium text-sm"><Minus className="w-4 h-4 text-gray-300 shrink-0" /> 5 hábitos activos</li>
-                  <li className="flex items-center gap-3 text-gray-400 font-medium text-sm"><X className="w-4 h-4 text-gray-200 shrink-0" /> Google Calendar</li>
-                  <li className="flex items-center gap-3 text-gray-400 font-medium text-sm"><X className="w-4 h-4 text-gray-200 shrink-0" /> Estadísticas avanzadas</li>
+                <ul className="space-y-5 mb-10 flex-1">
+                  <li className="flex items-center gap-4 text-gray-700 font-medium text-base"><Check className="w-5 h-5 text-black shrink-0" /> Tareas ilimitadas</li>
+                  <li className="flex items-center gap-4 text-gray-700 font-medium text-base">
+                    <Check className="w-5 h-5 text-black shrink-0" />
+                    IA por texto ilimitada
+                  </li>
+                  <li className="flex items-center gap-4 text-gray-700 font-medium text-base">
+                    <Minus className="w-5 h-5 text-gray-300 shrink-0" />
+                    3 notas de voz IA al mes
+                  </li>
+                  <li className="flex items-center gap-4 text-gray-700 font-medium text-base">
+                    <Minus className="w-5 h-5 text-gray-300 shrink-0" />
+                    5 hábitos activos
+                  </li>
+                  <li className="flex items-center gap-4 text-gray-400 font-medium text-base">
+                    <X className="w-5 h-5 text-gray-200 shrink-0" />
+                    Google Calendar
+                  </li>
+                  <li className="flex items-center gap-4 text-gray-400 font-medium text-base">
+                    <X className="w-5 h-5 text-gray-200 shrink-0" />
+                    Estadísticas avanzadas
+                  </li>
                 </ul>
                 <Link href="/signup">
                   <button className="w-full bg-black text-white border-2 border-black rounded-xl py-3 font-bold hover:bg-white hover:text-black transition-colors text-sm">
@@ -415,11 +430,26 @@ export default function Landing() {
                 </div>
                 <ul className="space-y-4 mb-8 flex-1">
                   <li className="flex items-center gap-3 text-gray-300 font-medium text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Tareas ilimitadas</li>
-                  <li className="flex items-center gap-3 text-gray-300 font-medium text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Notificaciones Push</li>
-                  <li className="flex items-center gap-3 text-white font-bold text-sm"><Check className="w-4 h-4 text-white shrink-0" /> IA Ilimitada</li>
-                  <li className="flex items-center gap-3 text-white font-bold text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Hábitos ilimitados</li>
-                  <li className="flex items-center gap-3 text-white font-bold text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Google Calendar</li>
-                  <li className="flex items-center gap-3 text-white font-bold text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Estadísticas avanzadas</li>
+                  <li className="flex items-center gap-4 text-white font-bold text-base">
+                    <Check className="w-5 h-5 text-white shrink-0" />
+                    Notificaciones Push
+                  </li>
+                  <li className="flex items-center gap-4 text-white font-bold text-base">
+                    <Check className="w-5 h-5 text-white shrink-0" />
+                    IA por voz ilimitada
+                  </li>
+                  <li className="flex items-center gap-4 text-white font-bold text-base">
+                    <Check className="w-5 h-5 text-white shrink-0" />
+                    Hábitos ilimitados
+                  </li>
+                  <li className="flex items-center gap-4 text-white font-bold text-base">
+                    <Check className="w-5 h-5 text-white shrink-0" />
+                    Google Calendar
+                  </li>
+                  <li className="flex items-center gap-4 text-white font-bold text-base">
+                    <Check className="w-5 h-5 text-white shrink-0" />
+                    Estadísticas avanzadas
+                  </li>
                 </ul>
                 <Link href="/signup">
                   <button className="w-full bg-white text-black border-2 border-white rounded-xl py-3 font-bold hover:bg-black hover:text-white transition-colors text-sm">
