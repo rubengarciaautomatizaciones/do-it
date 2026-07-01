@@ -45,11 +45,11 @@ router.post("/transcribe", async (req, res) => {
   const prompt = `Extrae de este audio una tarea. La fecha y hora actual en España/Madrid es: ${madridTime}.
   REGLAS ESTRICTAS: 
   1. 'titulo': Crea un título corto (MÁXIMO 5 PALABRAS) que resuma la acción principal.
-  2. 'descripcion': Mantén la información original INTACTA (incluyendo fechas, horas y enlaces). Solo dale un formato limpio y profesional (usa viñetas si hay varios puntos). NO resumas eliminando datos ni uses palabras raras. Si el texto es corto, déjalo tal cual.
+  2. 'descripcion': Mantén la información original INTACTA. Formatea el texto en HTML BÁSICO (<p>, <ul>, <li>, <strong>, <br>). Si hay varios puntos o listas, usa etiquetas <ul> y <li>. NO uses markdown (ni asteriscos ni hashtags). Si el texto es corto, envuélvelo en un <p>. Si no hay detalles extra, devuelve null.
   3. 'fecha_vencimiento': Extrae la fecha en formato "YYYY-MM-DD" calculada desde hoy. Si no hay, null.
   4. 'hora_vencimiento': Extrae la hora en formato 24h "HH:mm". Si no hay, null.
   5. 'links': Array de strings con URLs detectadas. Si no hay, [].
-  Devuelve SOLO un JSON válido, sin markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null", "links": []}`;
+  Devuelve SOLO un JSON válido, sin bloques de código markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null", "links": []}`;
 
   let extractedTask = { titulo: "Nota de voz", descripcion: null, fecha_vencimiento: null, hora_vencimiento: null, links: [] };
 
@@ -87,4 +87,4 @@ router.post("/transcribe", async (req, res) => {
   return res.status(201).json(task);
 });
 
-export default router;
+export default router;prompt
