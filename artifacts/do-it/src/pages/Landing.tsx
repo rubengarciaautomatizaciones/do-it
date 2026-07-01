@@ -429,7 +429,10 @@ export default function Landing() {
                   <span className="text-gray-400 font-medium text-sm">/{isAnnual ? 'año' : 'mes'}</span>
                 </div>
                 <ul className="space-y-4 mb-8 flex-1">
-                  <li className="flex items-center gap-3 text-gray-300 font-medium text-sm"><Check className="w-4 h-4 text-white shrink-0" /> Tareas ilimitadas</li>
+                  <li className="flex items-center gap-4 text-white font-bold text-base">
+                    <Check className="w-5 h-5 text-white shrink-0" />
+                    Tareas ilimitadas
+                  </li>
                   <li className="flex items-center gap-4 text-white font-bold text-base">
                     <Check className="w-5 h-5 text-white shrink-0" />
                     Notificaciones Push
