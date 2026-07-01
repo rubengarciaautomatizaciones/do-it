@@ -163,6 +163,7 @@ export default function Landing() {
   const [showIOSAlert, setShowIOSAlert] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
     if (!loading && user) setLocation('/tasks');
@@ -174,6 +175,9 @@ export default function Landing() {
     const safari = ios && /webkit/.test(userAgent) && !/crios|fxios|opios/.test(userAgent);
     setIsIOS(ios);
     setIsSafari(safari);
+    const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsStandalone(checkStandalone);
+
 
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
@@ -239,18 +243,31 @@ export default function Landing() {
                 Menos ruido. Más acción.
               </p>
 
-              {isMobile ? (
+              {isStandalone ? (
                 <div className="flex flex-col gap-3 w-full max-w-xs mx-auto">
-                  <button onClick={handleIOSDownload} className="w-full bg-black text-white rounded-xl py-3 text-sm font-semibold hover:bg-gray-800 transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2">
-                    <Apple className="w-4 h-4" /> Descargar en iOS
+                  <Link href="/signup">
+                    <button className="w-full bg-black text-white rounded-2xl py-4 text-base font-semibold hover:bg-gray-800 transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2">
+                      Empezar gratis <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </Link>
+                  <Link href="/login">
+                    <button className="w-full bg-white text-black border-2 border-gray-200 rounded-2xl py-4 text-base font-semibold hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2">
+                      Ya tengo cuenta
+                    </button>
+                  </Link>
+                </div>
+              ) : isMobile ? (
+                <div className="flex flex-col gap-3 w-full max-w-xs mx-auto">
+                  <button onClick={handleIOSDownload} className="w-full bg-black text-white rounded-2xl py-4 text-base font-semibold hover:bg-gray-800 transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2">
+                    <Apple className="w-5 h-5" /> Descargar en iOS
                   </button>
-                  <button onClick={handleAndroidDownload} className="w-full bg-white text-black border-2 border-gray-200 rounded-xl py-3 text-sm font-semibold hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2">
-                    <Smartphone className="w-4 h-4" /> Descargar en Android
+                  <button onClick={handleAndroidDownload} className="w-full bg-white text-black border-2 border-gray-200 rounded-2xl py-4 text-base font-semibold hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2">
+                    <Smartphone className="w-5 h-5" /> Descargar en Android
                   </button>
                 </div>
               ) : (
                 <Link href="/signup">
-                  <button className="bg-black text-white border-2 border-black rounded-full px-8 py-3 text-sm font-semibold hover:bg-white hover:text-black transition-colors active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 w-fit">
+                  <button className="bg-black text-white border-2 border-black rounded-full px-10 py-4 text-lg font-semibold hover:bg-white hover:text-black transition-colors active:scale-[0.98] shadow-xl flex items-center justify-center gap-2 mx-auto">
                     Empezar gratis <ArrowRight className="w-4 h-4" />
                   </button>
                 </Link>
