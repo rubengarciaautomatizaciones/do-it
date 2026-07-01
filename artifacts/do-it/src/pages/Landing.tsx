@@ -267,7 +267,7 @@ export default function Landing() {
                 </div>
               ) : (
                 <Link href="/signup">
-                  <button className="bg-black text-white border-2 border-black rounded-full px-10 py-4 text-lg font-semibold hover:bg-white hover:text-black transition-colors active:scale-[0.98] shadow-xl flex items-center justify-center gap-2 mx-auto">
+                  <button className="bg-black text-white border-2 border-black rounded-full px-10 py-4 text-lg font-semibold hover:bg-white hover:text-black transition-colors active:scale-[0.98] shadow-xl flex items-center justify-center gap-2">
                     Empezar gratis <ArrowRight className="w-4 h-4" />
                   </button>
                 </Link>

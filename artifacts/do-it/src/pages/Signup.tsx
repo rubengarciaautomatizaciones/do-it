@@ -26,8 +26,22 @@ export default function Signup() {
       options: { data: { full_name: name } }
     });
 
-    if (authError) setError(authError.message);
-    else setLocation('/tasks'); // Si no requiere confirmación de email, entra directo
+    if (authError) {
+      setError(authError.message);
+    } else {
+      // Avisar al backend para que envíe el email al admin
+      try {
+        await fetch('/api/webhooks/new-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name })
+        });
+      } catch (e) {
+        console.error("Error notificando nuevo usuario", e);
+      }
+
+      setLocation('/tasks');
+    }
 
     setLoading(false);
   };

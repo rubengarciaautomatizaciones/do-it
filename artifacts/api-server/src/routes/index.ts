@@ -10,6 +10,7 @@ import cronRouter from "./cron";
 import notificationsRouter from "./notifications"; // <-- AÑADIR ESTO
 import accountRouter from "./account"; // <-- AÑADIR
 import supportRouter from "./support";
+import webhooksRouter from "./webhooks";
 
 
 

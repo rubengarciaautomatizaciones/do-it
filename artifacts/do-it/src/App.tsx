@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { I18nProvider } from "./contexts/I18nContext";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -66,6 +67,7 @@ export default function App() {
           </I18nProvider>
         </AuthProvider>
         <Toaster />
+        <Analytics />
       </TooltipProvider>
     </PersistQueryClientProvider>
   );
