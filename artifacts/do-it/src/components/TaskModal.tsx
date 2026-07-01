@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useUpdateTask, useCreateTask, useDeleteTask, useAddTaskAttachment, useGetTaskMetadata, useGetTasks, getGetTasksQueryKey, Task, useGetPreferences } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link as LinkIcon, Plus, Mic, X, Folder, Loader2, Trash2, Check } from 'lucide-react';
+import { Link as LinkIcon, Plus, Mic, X, Folder, Loader2, Trash2, Check, Repeat } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
@@ -91,7 +92,7 @@ function DeleteConfirmButton({ onDelete, t }: { onDelete: () => void, t: any }) 
   );
 }
 
-export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | null, isOpen: boolean, onClose: () => void }) {
+export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> & { rrule?: string | null } | null, isOpen: boolean, onClose: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -103,7 +104,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
   const { data: allTasks } = useGetTasks();
   const { data: prefs } = useGetPreferences();
 
-  const [localTask, setLocalTask] = useState<Partial<Task> | null>(null);
+  const [localTask, setLocalTask] = useState<Partial<Task> & { rrule?: string | null } | null>(null);
   const [notifValue, setNotifValue] = useState<string>('');
   const [notifUnit, setNotifUnit] = useState<string>('minutos');
 
@@ -114,11 +115,18 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPaywall, setShowPaywall] = useState(false);
 
+  // Estado para "Todo el día"
+  const [isAllDay, setIsAllDay] = useState(false);
+
   useEffect(() => {
     if (isOpen && task) {
       const existingTask = allTasks?.find(t => t.id === task.id);
       const taskData = existingTask || task;
-      setLocalTask(taskData);
+      setLocalTask(taskData as any);
+
+      // Si no tiene horas, asumimos que es "Todo el día"
+      setIsAllDay(!taskData.horaInicio && !taskData.horaVencimiento);
+
       if (taskData.fechaNotificacion) {
         const rel = getRelativeNotif(taskData.fechaVencimiento || null, taskData.horaInicio || null, taskData.fechaNotificacion, taskData.horaNotificacion || null);
         setNotifValue(rel.value); setNotifUnit(rel.unit);
@@ -128,7 +136,14 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
 
   if (!localTask) return null;
 
-  const updateLocal = (updates: Partial<Task>) => setLocalTask(prev => ({ ...prev, ...updates }));
+  const updateLocal = (updates: Partial<Task> & { rrule?: string | null }) => setLocalTask(prev => ({ ...prev, ...updates }));
+
+  const handleAllDayToggle = (checked: boolean) => {
+    setIsAllDay(checked);
+    if (checked) {
+      updateLocal({ horaInicio: null, horaVencimiento: null });
+    }
+  };
 
   const handleSave = () => {
     if (!user) return;
@@ -137,7 +152,18 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
     if (isNew && isEmpty) { onClose(); return; }
 
     const payload: any = {
-      titulo: localTask.titulo || "Sin título", descripcion: localTask.descripcion, fechaVencimiento: localTask.fechaVencimiento, fechaFin: (localTask as any).fechaFin, horaInicio: localTask.horaInicio, horaVencimiento: localTask.horaVencimiento, fechaNotificacion: localTask.fechaNotificacion, horaNotificacion: localTask.horaNotificacion, proyecto: localTask.proyecto, links: localTask.links, completada: localTask.completada
+      titulo: localTask.titulo || "Sin título", 
+      descripcion: localTask.descripcion, 
+      fechaVencimiento: localTask.fechaVencimiento, 
+      fechaFin: (localTask as any).fechaFin, 
+      horaInicio: localTask.horaInicio, 
+      horaVencimiento: localTask.horaVencimiento, 
+      fechaNotificacion: localTask.fechaNotificacion, 
+      horaNotificacion: localTask.horaNotificacion, 
+      proyecto: localTask.proyecto, 
+      rrule: localTask.rrule, // <-- Guardamos la regla de repetición
+      links: localTask.links, 
+      completada: localTask.completada
     };
 
     queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => {
@@ -206,7 +232,6 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
     const file = e.target.files?.[0];
     if (!file || !user || !localTask.id) return toast({ title: "Guarda la tarea primero para subir archivos" });
 
-    // BLOQUEO PAYWALL (5MB)
     if (file.size > 5 * 1024 * 1024 && !prefs?.isPremium) {
       setShowPaywall(true);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -243,16 +268,25 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col justify-center gap-5">
+
+              {/* Switch Todo el día */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-200/50">
+                <span className="text-sm font-semibold text-gray-900">Todo el día</span>
+                <Switch checked={isAllDay} onCheckedChange={handleAllDayToggle} />
+              </div>
+
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm font-medium text-gray-900 w-12">{t('modal.from')}</span>
                 <div className="relative w-full max-w-[140px]">
                   <input type="date" value={localTask.fechaVencimiento || ''} onChange={(e) => handleDesdeChange(e.target.value || null, localTask.horaInicio || null)} className="pill-input" />
                   {localTask.fechaVencimiento && <button onPointerDown={(e) => { e.preventDefault(); handleDesdeChange(null, localTask.horaInicio || null); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
                 </div>
-                <div className="relative w-full max-w-[140px]">
-                  <input type="time" value={localTask.horaInicio || ''} onChange={(e) => handleDesdeChange(localTask.fechaVencimiento || null, e.target.value || null)} className="pill-input" />
-                  {localTask.horaInicio && <button onPointerDown={(e) => { e.preventDefault(); handleDesdeChange(localTask.fechaVencimiento || null, null); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
-                </div>
+                {!isAllDay && (
+                  <div className="relative w-full max-w-[140px]">
+                    <input type="time" value={localTask.horaInicio || ''} onChange={(e) => handleDesdeChange(localTask.fechaVencimiento || null, e.target.value || null)} className="pill-input" />
+                    {localTask.horaInicio && <button onPointerDown={(e) => { e.preventDefault(); handleDesdeChange(localTask.fechaVencimiento || null, null); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                  </div>
+                )}
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm font-medium text-gray-900 w-12">{t('modal.to')}</span>
@@ -260,14 +294,33 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> | nul
                   <input type="date" value={(localTask as any).fechaFin || ''} onChange={(e) => updateLocal({ fechaFin: e.target.value || null } as any)} className="pill-input" />
                   {(localTask as any).fechaFin && <button onPointerDown={(e) => { e.preventDefault(); updateLocal({ fechaFin: null } as any); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
                 </div>
-                <div className="relative w-full max-w-[140px]">
-                  <input type="time" value={localTask.horaVencimiento || ''} onChange={(e) => updateLocal({ horaVencimiento: e.target.value || null })} className="pill-input" />
-                  {localTask.horaVencimiento && <button onPointerDown={(e) => { e.preventDefault(); updateLocal({ horaVencimiento: null }); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
-                </div>
+                {!isAllDay && (
+                  <div className="relative w-full max-w-[140px]">
+                    <input type="time" value={localTask.horaVencimiento || ''} onChange={(e) => updateLocal({ horaVencimiento: e.target.value || null })} className="pill-input" />
+                    {localTask.horaVencimiento && <button onPointerDown={(e) => { e.preventDefault(); updateLocal({ horaVencimiento: null }); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black bg-white"><X className="w-3 h-3"/></button>}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex flex-col gap-4">
+              {/* Selector de Repetición */}
+              <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex items-center justify-between gap-4 flex-1">
+                <span className="text-sm font-medium text-gray-900 flex items-center gap-2"><Repeat className="w-4 h-4 text-gray-400" /> Repetir</span>
+                <Select value={localTask.rrule || "none"} onValueChange={(val) => updateLocal({ rrule: val === "none" ? null : val })}>
+                  <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm w-auto min-w-[120px]">
+                    <SelectValue placeholder="Nunca" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="none">Nunca</SelectItem>
+                    <SelectItem value="FREQ=DAILY">Todos los días</SelectItem>
+                    <SelectItem value="FREQ=WEEKLY">Cada semana</SelectItem>
+                    <SelectItem value="FREQ=MONTHLY">Cada mes</SelectItem>
+                    <SelectItem value="FREQ=YEARLY">Cada año</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex items-center justify-between gap-4 flex-1">
                 <span className="text-sm font-medium text-gray-900">{t('tasks.col.notif')}</span>
                 <div className="flex items-center gap-2">

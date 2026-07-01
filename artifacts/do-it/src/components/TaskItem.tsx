@@ -4,10 +4,12 @@ import { useUpdateTask, useDeleteTask, getGetTasksQueryKey, Task } from '@worksp
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, Trash2, Link as LinkIcon, Paperclip } from 'lucide-react';
+import { Calendar, Trash2, Link as LinkIcon, Paperclip, Repeat } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TaskModal } from './TaskModal';
+import { RRule } from 'rrule';
+import { useToast } from '../hooks/use-toast';
 
 export function Checkbox({ completada, onToggle }: { completada: boolean, onToggle: (e: React.MouseEvent) => void }) {
   return (
@@ -69,12 +71,13 @@ function DeleteConfirmButton({ onDelete }: { onDelete: (e: React.MouseEvent) => 
   );
 }
 
-export function TaskRowDesktop({ task, currentFilter }: { task: Task, currentFilter: string }) {
+export function TaskRowDesktop({ task, currentFilter }: { task: Task & { rrule?: string | null }, currentFilter: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [localCompletada, setLocalCompletada] = useState(task.completada);
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
+  const { toast } = useToast();
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
@@ -83,8 +86,40 @@ export function TaskRowDesktop({ task, currentFilter }: { task: Task, currentFil
 
   const toggleComplete = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    const newStatus = !localCompletada;
 
+    // LÓGICA DE TAREAS REPETITIVAS
+    if (!localCompletada && task.rrule) {
+      try {
+        const rule = RRule.fromString(task.rrule);
+        // Calculamos la próxima fecha a partir de mañana (para no repetir hoy mismo)
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+
+        const nextDate = rule.after(tomorrow, true);
+
+        if (nextDate) {
+          const nextDateStr = format(nextDate, 'yyyy-MM-dd');
+
+          // Animación visual rápida
+          setLocalCompletada(true);
+          setTimeout(() => {
+            setLocalCompletada(false);
+            toast({ title: "Tarea reprogramada", description: `Próxima fecha: ${format(nextDate, "d 'de' MMMM", { locale: es })}` });
+
+            // Actualizamos en BD
+            queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => old?.map(t => t.id === task.id ? { ...t, fechaVencimiento: nextDateStr, completada: false } : t));
+            updateTask.mutate({ id: task.id, data: { fechaVencimiento: nextDateStr, completada: false } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+          }, 500);
+          return;
+        }
+      } catch (err) {
+        console.error("Error parsing rrule", err);
+      }
+    }
+
+    // LÓGICA NORMAL
+    const newStatus = !localCompletada;
     if (currentFilter === "sin_hacer" && newStatus === true) {
       setLocalCompletada(true);
       setTimeout(() => {
@@ -108,7 +143,12 @@ export function TaskRowDesktop({ task, currentFilter }: { task: Task, currentFil
         className={`group border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer`}
       >
         <td className="p-2 text-center"><Checkbox completada={localCompletada} onToggle={toggleComplete} /></td>
-        <td className={`p-3 text-[15px] truncate ${localCompletada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>{task.titulo}</td>
+        <td className={`p-3 text-[15px] truncate ${localCompletada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+          <div className="flex items-center gap-2">
+            {task.rrule && <Repeat className="w-3 h-3 text-gray-400 shrink-0" />}
+            {task.titulo}
+          </div>
+        </td>
         <td className="p-3 text-gray-500 text-sm truncate">{plainTextDescription}</td>
         <td className="p-3 text-gray-500 text-sm whitespace-nowrap">
           {task.fechaVencimiento ? `${format(new Date(task.fechaVencimiento), "d MMM yyyy", { locale: es })}${task.horaVencimiento ? ` · ${task.horaVencimiento}` : ''}` : ''}
@@ -137,18 +177,48 @@ export function TaskRowDesktop({ task, currentFilter }: { task: Task, currentFil
   );
 }
 
-export function TaskItemMobile({ task, currentFilter }: { task: Task, currentFilter: string }) {
+export function TaskItemMobile({ task, currentFilter }: { task: Task & { rrule?: string | null }, currentFilter: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [localCompletada, setLocalCompletada] = useState(task.completada);
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
+  const { toast } = useToast();
 
   useEffect(() => { setLocalCompletada(task.completada); }, [task.completada]);
 
   const toggleComplete = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    const newStatus = !localCompletada;
 
+    // LÓGICA DE TAREAS REPETITIVAS
+    if (!localCompletada && task.rrule) {
+      try {
+        const rule = RRule.fromString(task.rrule);
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+
+        const nextDate = rule.after(tomorrow, true);
+
+        if (nextDate) {
+          const nextDateStr = format(nextDate, 'yyyy-MM-dd');
+
+          setLocalCompletada(true);
+          setTimeout(() => {
+            setLocalCompletada(false);
+            toast({ title: "Tarea reprogramada", description: `Próxima fecha: ${format(nextDate, "d 'de' MMMM", { locale: es })}` });
+
+            queryClient.setQueryData(getGetTasksQueryKey(), (old: Task[] | undefined) => old?.map(t => t.id === task.id ? { ...t, fechaVencimiento: nextDateStr, completada: false } : t));
+            updateTask.mutate({ id: task.id, data: { fechaVencimiento: nextDateStr, completada: false } }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() }) });
+          }, 500);
+          return;
+        }
+      } catch (err) {
+        console.error("Error parsing rrule", err);
+      }
+    }
+
+    // LÓGICA NORMAL
+    const newStatus = !localCompletada;
     if (currentFilter === "sin_hacer" && newStatus === true) {
       setLocalCompletada(true);
       setTimeout(() => {
@@ -170,7 +240,8 @@ export function TaskItemMobile({ task, currentFilter }: { task: Task, currentFil
       >
         <Checkbox completada={localCompletada} onToggle={toggleComplete} />
         <div className="flex-1 min-w-0">
-          <p className={`text-[15px] leading-tight truncate ${localCompletada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+          <p className={`text-[15px] leading-tight truncate flex items-center gap-1.5 ${localCompletada ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+            {task.rrule && <Repeat className="w-3 h-3 text-gray-400 shrink-0" />}
             {task.titulo}
           </p>
         </div>

@@ -34,6 +34,7 @@ export const GetTasksResponseItem = zod.object({
   "completada": zod.boolean(),
   "createdAt": zod.string(),
   "updatedAt": zod.string(),
+  "rrule": zod.string().nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.string(),
   "taskId": zod.string(),
@@ -62,7 +63,8 @@ export const CreateTaskBody = zod.object({
   "orden": zod.number().nullish(),
   "links": zod.array(zod.string()).optional(),
   "notificaciones": zod.array(zod.string()).optional(),
-  "userId": zod.string()
+  "userId": zod.string(),
+  "rrule": zod.string().nullish()
 })
 
 
@@ -107,7 +109,8 @@ export const UpdateTaskBody = zod.object({
   "orden": zod.number().nullish(),
   "links": zod.array(zod.string()).optional(),
   "notificaciones": zod.array(zod.string()).optional(),
-  "completada": zod.boolean().optional()
+  "completada": zod.boolean().optional(),
+  "rrule": zod.string().nullish()
 })
 
 export const UpdateTaskResponse = zod.object({
@@ -128,6 +131,7 @@ export const UpdateTaskResponse = zod.object({
   "completada": zod.boolean(),
   "createdAt": zod.string(),
   "updatedAt": zod.string(),
+  "rrule": zod.string().nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.string(),
   "taskId": zod.string(),

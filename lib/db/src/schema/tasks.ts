@@ -14,6 +14,7 @@ export const tasksTable = pgTable("tasks", {
   fechaNotificacion: text("fecha_notificacion"), 
   horaNotificacion: text("hora_notificacion"), 
   proyecto: text("proyecto"),
+  rrule: text("rrule"), // <-- NUEVA COLUMNA
   orden: integer("orden").default(0), 
   links: jsonb("links").$type<string[]>().default([]), 
   notificaciones: jsonb("notificaciones").$type<string[]>().default([]), 

@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
-import { Mic, Calendar, Target, ArrowRight, Check, Minus, ChevronLeft, ChevronRight, Zap, Clock } from 'lucide-react';
+import { Mic, Calendar, Target, ArrowRight, Check, Minus, ChevronLeft, ChevronRight, Zap, Clock, Apple, Smartphone, Info } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react';
+import { useIsMobile } from '../hooks/use-mobile';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
-// --- COMPONENTE: CARRUSEL REALISTA ---
+// --- COMPONENTE: CARRUSEL 3D ---
 const ShowcaseCarousel = () => {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'center' });
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!emblaApi) return;
@@ -18,7 +21,6 @@ const ShowcaseCarousel = () => {
   const handlePrev = () => emblaApi?.scrollPrev();
   const handleNext = () => emblaApi?.scrollNext();
 
-  // Mockups de interfaces reales construidos con Tailwind
   const slides = [
     {
       title: "Input Mágico",
@@ -100,20 +102,31 @@ const ShowcaseCarousel = () => {
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-8">
       <div className="relative">
-        {/* Efecto de difuminado en los bordes para indicar scroll */}
         <div className="absolute inset-y-0 left-0 w-12 md:w-24 bg-gradient-to-r from-[#FAFAFA] to-transparent z-10 pointer-events-none" />
         <div className="absolute inset-y-0 right-0 w-12 md:w-24 bg-gradient-to-l from-[#FAFAFA] to-transparent z-10 pointer-events-none" />
 
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex touch-pan-y items-center">
             {slides.map((slide, index) => {
-              const isActive = index === selectedIndex;
+              const offset = index - selectedIndex;
+              const total = slides.length;
+              let pos = (offset + total) % total;
+              if (pos > Math.floor(total / 2)) pos -= total;
+
+              const isCenter = pos === 0;
+              const isAdjacent = Math.abs(pos) === 1;
+
               return (
-                <div key={index} className="flex-[0_0_85%] md:flex-[0_0_40%] min-w-0 px-3 transition-all duration-500" style={{ opacity: isActive ? 1 : 0.4, transform: `scale(${isActive ? 1 : 0.9})` }}>
+                <div key={index} className="flex-[0_0_85%] md:flex-[0_0_40%] min-w-0 px-3 transition-all duration-500" 
+                     style={{ 
+                       opacity: isCenter ? 1 : isAdjacent ? 0.5 : 0, 
+                       transform: `scale(${isCenter ? 1 : 0.85})`,
+                       filter: isCenter ? 'blur(0px)' : 'blur(2px)'
+                     }}>
                   <div className="h-[280px] mb-6">
                     {slide.mockup}
                   </div>
-                  <div className="text-center px-4">
+                  <div className="text-center px-4" style={{ opacity: isCenter ? 1 : 0 }}>
                     <h3 className="text-xl font-bold text-black mb-2 tracking-tight">{slide.title}</h3>
                     <p className="text-sm text-gray-500 font-medium leading-relaxed">{slide.desc}</p>
                   </div>
@@ -123,13 +136,16 @@ const ShowcaseCarousel = () => {
           </div>
         </div>
 
-        {/* Controles manuales */}
-        <button onClick={handlePrev} className="absolute left-2 md:left-8 top-[140px] -translate-y-1/2 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-black hover:bg-gray-50 transition-colors z-20">
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <button onClick={handleNext} className="absolute right-2 md:right-8 top-[140px] -translate-y-1/2 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-black hover:bg-gray-50 transition-colors z-20">
-          <ChevronRight className="w-5 h-5" />
-        </button>
+        {!isMobile && (
+          <>
+            <button onClick={handlePrev} className="absolute left-2 md:left-8 top-[140px] -translate-y-1/2 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-black hover:bg-gray-50 transition-colors z-20">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button onClick={handleNext} className="absolute right-2 md:right-8 top-[140px] -translate-y-1/2 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-black hover:bg-gray-50 transition-colors z-20">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -139,11 +155,48 @@ const ShowcaseCarousel = () => {
 export default function Landing() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   const [isAnnual, setIsAnnual] = useState(false);
+
+  const [isIOS, setIsIOS] = useState(false);
+  const [isSafari, setIsSafari] = useState(false);
+  const [showIOSAlert, setShowIOSAlert] = useState(false);
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
     if (!loading && user) setLocation('/tasks');
   }, [user, loading, setLocation]);
+
+  useEffect(() => {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const ios = /iphone|ipad|ipod/.test(userAgent);
+    const safari = ios && /webkit/.test(userAgent) && !/crios|fxios|opios/.test(userAgent);
+    setIsIOS(ios);
+    setIsSafari(safari);
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleIOSDownload = () => {
+    if (!isSafari) setShowIOSAlert(true);
+    else setShowIOSInstructions(true);
+  };
+
+  const handleAndroidDownload = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
+    } else {
+      alert("Para instalar la app, toca los 3 puntos del navegador y selecciona 'Añadir a la pantalla de inicio'.");
+    }
+  };
 
   if (loading || user) return <div className="min-h-screen bg-white" />;
 
@@ -160,31 +213,45 @@ export default function Landing() {
                 Entrar
               </button>
             </Link>
-            <Link href="/signup">
-              <button className="bg-black text-white text-sm font-semibold px-5 py-2 rounded-full hover:bg-gray-800 transition-transform active:scale-95 shadow-sm">
-                Empezar
-              </button>
-            </Link>
+            {!isMobile && (
+              <Link href="/signup">
+                <button className="bg-black text-white text-sm font-semibold px-5 py-2 rounded-full hover:bg-gray-800 transition-transform active:scale-95 shadow-sm">
+                  Empezar
+                </button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center w-full pt-28">
 
-        {/* HERO SECTION (Más compacto) */}
+        {/* HERO SECTION */}
         <section className="w-full max-w-3xl mx-auto px-6 pt-8 pb-4 text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }}>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-black mb-6 leading-[1.05]">
               Ponlo y hazlo.
             </h1>
-            <p className="text-lg md:text-xl text-gray-500 mb-8 max-w-xl mx-auto font-medium leading-relaxed">
-              El gestor minimalista con IA que no existía. Así que lo construí.
+            <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-xl mx-auto font-medium leading-relaxed">
+              Menos ruido. Más acción.
             </p>
-            <Link href="/signup">
-              <button className="bg-black text-white border-2 border-black rounded-full px-8 py-3.5 text-base font-semibold hover:bg-white hover:text-black transition-colors active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 mx-auto">
-                Empezar gratis <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
+
+            {isMobile ? (
+              <div className="flex flex-col gap-3 w-full max-w-xs mx-auto">
+                <button onClick={handleIOSDownload} className="w-full bg-black text-white rounded-2xl py-4 text-base font-semibold hover:bg-gray-800 transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2">
+                  <Apple className="w-5 h-5" /> Descargar en iOS
+                </button>
+                <button onClick={handleAndroidDownload} className="w-full bg-white text-black border-2 border-gray-200 rounded-2xl py-4 text-base font-semibold hover:bg-gray-50 transition-all active:scale-[0.98] shadow-sm flex items-center justify-center gap-2">
+                  <Smartphone className="w-5 h-5" /> Descargar en Android
+                </button>
+              </div>
+            ) : (
+              <Link href="/signup">
+                <button className="bg-black text-white border-2 border-black rounded-full px-8 py-3.5 text-base font-semibold hover:bg-white hover:text-black transition-colors active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 mx-auto">
+                  Empezar gratis <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+            )}
           </motion.div>
         </section>
 
@@ -193,35 +260,15 @@ export default function Landing() {
           <ShowcaseCarousel />
         </motion.section>
 
-        {/* BENTO GRID (Más compacto y escaneable) */}
-        <section className="w-full max-w-5xl mx-auto px-6 py-16">
+        {/* NUESTRA HISTORIA */}
+        <section className="w-full max-w-3xl mx-auto px-6 py-20">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.6 }}>
-            <div className="text-center mb-10">
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tighter text-black mb-3">Todo lo que necesitas.</h2>
-              <p className="text-lg text-gray-500 font-medium">Nada de lo que no.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="md:col-span-2 bg-white rounded-3xl p-8 border border-gray-200 shadow-sm flex flex-col justify-center">
-                <Mic className="w-8 h-8 text-black mb-4" />
-                <h3 className="text-2xl font-bold text-black mb-2 tracking-tight">Input Mágico</h3>
-                <p className="text-gray-500 font-medium text-sm">Graba un audio o escribe. La IA extrae la acción, limpia el contexto y calcula las fechas automáticamente.</p>
-              </div>
-              <div className="md:col-span-1 bg-white rounded-3xl p-8 border border-gray-200 shadow-sm flex flex-col justify-center">
-                <Calendar className="w-8 h-8 text-black mb-4" />
-                <h3 className="text-xl font-bold text-black mb-2 tracking-tight">Calendario</h3>
-                <p className="text-gray-500 font-medium text-sm">Sincronización bidireccional.</p>
-              </div>
-              <div className="md:col-span-1 bg-white rounded-3xl p-8 border border-gray-200 shadow-sm flex flex-col justify-center">
-                <Target className="w-8 h-8 text-black mb-4" />
-                <h3 className="text-xl font-bold text-black mb-2 tracking-tight">Hábitos</h3>
-                <p className="text-gray-500 font-medium text-sm">Tracker visual y rachas.</p>
-              </div>
-              <div className="md:col-span-4 bg-black rounded-3xl p-8 border border-black shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-white mb-2 tracking-tight flex items-center gap-3"><Zap className="w-6 h-6 text-white" /> Rendimiento Offline</h3>
-                  <p className="text-gray-400 font-medium text-sm max-w-xl">Diseñada como PWA. Funciona sin conexión, se instala en tu móvil y responde en 0 milisegundos.</p>
-                </div>
+            <div className="bg-white rounded-[2rem] p-10 md:p-14 border border-gray-200 shadow-sm text-left">
+              <h2 className="text-3xl font-bold tracking-tighter text-black mb-6">Por qué creé do it!</h2>
+              <div className="space-y-4 text-lg text-gray-600 font-medium leading-relaxed">
+                <p>Buscaba una herramienta que trabajara para mí, no al revés.</p>
+                <p>Las apps del mercado estaban llenas de colores estridentes, gráficos innecesarios y formularios complejos que me hacían perder el tiempo. Quería algo donde pudiera entrar, soltar lo que tenía en la cabeza (por voz o texto) y salir en 3 segundos, sabiendo que una IA lo organizaría todo por mí.</p>
+                <p>Como no existía, la construí. Minimalismo extremo por fuera, tecnología punta por dentro.</p>
               </div>
             </div>
           </motion.div>
@@ -233,11 +280,18 @@ export default function Landing() {
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold tracking-tighter text-black mb-3">Planes simples.</h2>
               <p className="text-lg text-gray-500 font-medium">Empieza gratis, mejora cuando lo necesites.</p>
+
+              <div className="flex items-center justify-center bg-white p-1.5 rounded-full mt-10 w-fit mx-auto border border-gray-200 shadow-sm">
+                <button onClick={() => setIsAnnual(false)} className={`px-6 py-3 rounded-full text-sm font-bold transition-all ${!isAnnual ? 'bg-gray-100 text-black' : 'text-gray-400 hover:text-black'}`}>Mensual</button>
+                <button onClick={() => setIsAnnual(true)} className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isAnnual ? 'bg-gray-100 text-black' : 'text-gray-400 hover:text-black'}`}>
+                  Anual <span className="bg-black text-white text-[10px] px-2 py-0.5 rounded-full">-40%</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-8 md:gap-6 mt-8">
               {/* Free Plan */}
-              <div className="bg-white rounded-[2rem] p-8 border border-gray-200 shadow-sm flex flex-col mt-4 md:mt-0">
+              <div className="bg-white rounded-[2rem] p-8 border border-gray-200 shadow-sm flex flex-col hover:shadow-md transition-shadow mt-4 md:mt-0">
                 <h3 className="text-2xl font-bold text-black mb-1 tracking-tight">Free</h3>
                 <div className="flex items-baseline gap-1 mb-6">
                   <span className="text-4xl font-bold text-black tracking-tighter">0€</span>
@@ -260,14 +314,6 @@ export default function Landing() {
 
               {/* Premium Plan */}
               <div className="relative bg-black rounded-[2rem] p-8 border border-black shadow-xl flex flex-col mt-8 md:mt-0">
-                {/* Switch de precios flotante */}
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-white border border-gray-200 p-1 rounded-full flex items-center shadow-md z-10 w-max">
-                  <button onClick={() => setIsAnnual(false)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${!isAnnual ? 'bg-gray-100 text-black' : 'text-gray-400 hover:text-black'}`}>Mensual</button>
-                  <button onClick={() => setIsAnnual(true)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${isAnnual ? 'bg-gray-100 text-black' : 'text-gray-400 hover:text-black'}`}>
-                    Anual <span className="bg-black text-white text-[9px] px-1.5 py-0.5 rounded-full">-40%</span>
-                  </button>
-                </div>
-
                 <h3 className="text-2xl font-bold text-white mb-1 tracking-tight mt-2">Premium</h3>
                 <div className="flex items-baseline gap-1 mb-6">
                   <span className="text-4xl font-bold text-white tracking-tighter">{isAnnual ? '49.99€' : '6.99€'}</span>
@@ -307,11 +353,38 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* MODALES DE INSTALACIÓN IOS */}
+      <Dialog open={showIOSAlert} onOpenChange={setShowIOSAlert}>
+        <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl [&>button]:hidden">
+          <DialogHeader>
+            <div className="w-12 h-12 bg-gray-100 text-black rounded-2xl flex items-center justify-center mx-auto mb-4"><Info className="w-6 h-6" /></div>
+            <DialogTitle className="text-xl font-semibold text-center text-black">Abre Safari</DialogTitle>
+            <DialogDescription className="text-center text-gray-500">
+              Apple no permite instalar aplicaciones desde este navegador. Por favor, abre <strong>do-it.app</strong> en Safari para poder instalarla.
+            </DialogDescription>
+          </DialogHeader>
+          <button onClick={() => setShowIOSAlert(false)} className="w-full mt-4 bg-black text-white rounded-xl py-3.5 font-medium">Entendido</button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showIOSInstructions} onOpenChange={setShowIOSInstructions}>
+        <DialogContent className="bg-white rounded-3xl p-6 sm:max-w-md border-0 shadow-2xl [&>button]:hidden">
+          <DialogHeader>
+            <div className="w-12 h-12 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-4"><Apple className="w-6 h-6" /></div>
+            <DialogTitle className="text-xl font-semibold text-center text-black">Instala la App</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-3 text-sm text-gray-600 font-medium">
+            <p className="flex items-center gap-2"><span className="w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-black">1</span> Toca el botón Compartir en la barra inferior.</p>
+            <p className="flex items-center gap-2"><span className="w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-black">2</span> Selecciona <strong>Añadir a inicio</strong>.</p>
+          </div>
+          <button onClick={() => setShowIOSInstructions(false)} className="w-full mt-4 bg-black text-white rounded-xl py-3.5 font-medium">Entendido</button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// Componente X (Cruz)
 function X(props: any) {
   return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
 }

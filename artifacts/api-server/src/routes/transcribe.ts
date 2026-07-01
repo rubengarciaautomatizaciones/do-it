@@ -40,9 +40,21 @@ router.post("/transcribe", async (req, res) => {
   if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
 
   const ai = new GoogleGenAI({ apiKey });
-  const prompt = `Extrae de este audio una tarea. Devuelve un JSON estricto con: 'titulo' (string corto), 'descripcion' (string o null), 'fecha_vencimiento' (YYYY-MM-DD o null), 'hora_vencimiento' (HH:mm o null). Toma como referencia que hoy es ${new Date().toISOString()}. Solo el JSON, sin markdown.`;
 
-  let extractedTask = { titulo: "Nota de voz", descripcion: null, fecha_vencimiento: null, hora_vencimiento: null };
+  // Inyectamos la hora local de España para que la IA calcule bien "mañana", "hoy", etc.
+  const formatter = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const madridTime = formatter.format(new Date());
+
+  const prompt = `Extrae de este audio una tarea. La fecha y hora actual en España/Madrid es: ${madridTime}.
+  REGLAS ESTRICTAS: 
+  1. 'titulo': Crea un título corto (MÁXIMO 5 PALABRAS) que resuma la acción principal. NO copies todo el texto. Elimina fechas, horas y enlaces del título.
+  2. 'descripcion': Redacta los detalles o contexto de forma limpia y profesional. Elimina muletillas como "recuérdame que". Si el audio es corto y no hay detalles extra, devuelve null. NO pongas fechas ni enlaces aquí.
+  3. 'fecha_vencimiento': Formato "YYYY-MM-DD" calculado desde hoy. Si no hay, null.
+  4. 'hora_vencimiento': Formato 24h "HH:mm". Si no hay, null.
+  5. 'links': Array de strings con URLs detectadas. Si no hay, [].
+  Devuelve SOLO un JSON válido, sin markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null", "links": []}`;
+
+  let extractedTask = { titulo: "Nota de voz", descripcion: null, fecha_vencimiento: null, hora_vencimiento: null, links: [] };
 
   try {
     const response = await ai.models.generateContent({
@@ -50,7 +62,13 @@ router.post("/transcribe", async (req, res) => {
       contents: [{ role: "user", parts: [{ inlineData: { mimeType, data: audioBase64 } }, { text: prompt }] }],
     });
     const cleaned = (response.candidates?.[0]?.content?.parts?.[0]?.text ?? "").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    extractedTask = JSON.parse(cleaned);
+    const parsedData = JSON.parse(cleaned);
+
+    extractedTask.titulo = parsedData.titulo || extractedTask.titulo;
+    extractedTask.descripcion = parsedData.descripcion || null;
+    extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
+    extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
+    extractedTask.links = parsedData.links || [];
 
     // 2. ACTUALIZAR CONTADOR Y FECHA DE RESETEO
     await db.update(userPreferencesTable).set({ 
@@ -67,6 +85,7 @@ router.post("/transcribe", async (req, res) => {
     descripcion: extractedTask.descripcion ?? null,
     fechaVencimiento: extractedTask.fecha_vencimiento ?? null,
     horaVencimiento: extractedTask.hora_vencimiento ?? null,
+    links: extractedTask.links || [],
   }).returning();
 
   return res.status(201).json(task);

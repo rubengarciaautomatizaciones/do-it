@@ -61,6 +61,8 @@ export interface Task {
   completada: boolean;
   createdAt: string;
   updatedAt: string;
+  /** @nullable */
+  rrule?: string | null;
   attachments: TaskAttachment[];
 }
 
@@ -88,6 +90,8 @@ export interface TaskInput {
   links?: string[];
   notificaciones?: string[];
   userId: string;
+  /** @nullable */
+  rrule?: string | null;
 }
 
 export interface MagicTextInput {
@@ -119,6 +123,8 @@ export interface TaskUpdate {
   links?: string[];
   notificaciones?: string[];
   completada?: boolean;
+  /** @nullable */
+  rrule?: string | null;
 }
 
 export interface TaskStats {

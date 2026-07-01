@@ -10,7 +10,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Onboarding } from '../components/Onboarding';
 import { useTranslation } from '../contexts/I18nContext';
 
 export default function Tasks() {
@@ -161,7 +160,6 @@ export default function Tasks() {
       <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-24 bg-white z-30" />
       <div className="pointer-events-none fixed bottom-24 left-0 right-0 h-15 bg-gradient-to-t from-white via-white/50 to-transparent z-30" />
 
-      <Onboarding />
       <MagicInput />
       <BottomTabBar />
     </div>

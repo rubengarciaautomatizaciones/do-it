@@ -501,6 +501,7 @@ components:
         completada: { type: boolean }
         createdAt: { type: string }
         updatedAt: { type: string }
+        rrule: { type: ["string", "null"] }
         attachments: 
           type: array
           items:
@@ -523,6 +524,7 @@ components:
         links: { type: array, items: { type: string } }
         notificaciones: { type: array, items: { type: string } }
         userId: { type: string }
+        rrule: { type: ["string", "null"] }
 
     MagicTextInput:
       type: object
@@ -547,6 +549,7 @@ components:
         links: { type: array, items: { type: string } }
         notificaciones: { type: array, items: { type: string } }
         completada: { type: boolean }
+        rrule: { type: ["string", "null"] }
 
     TaskStats:
       type: object

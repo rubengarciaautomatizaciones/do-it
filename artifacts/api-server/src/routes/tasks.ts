@@ -29,6 +29,7 @@ const mapTask = (t: any) => ({
   fechaNotificacion: t.fechaNotificacion ?? null,
   horaNotificacion: t.horaNotificacion ?? null,
   proyecto: t.proyecto ?? null, 
+  rrule: t.rrule ?? null,
   orden: t.orden ?? 0,
   links: (t.links as string[]) ?? [],
   notificaciones: (t.notificaciones as string[]) ?? [],
@@ -79,7 +80,7 @@ router.post("/tasks", async (req, res) => {
     descripcion: descripcion ?? null, 
     fechaVencimiento: fechaVencimiento ?? null,
     fechaFin: fechaFin ?? null,
-    horaInicio: horaInicio ?? null, // <-- NUEVO
+    horaInicio: horaInicio ?? null,
     horaVencimiento: horaVencimiento ?? null,
     proyecto: null,
     links: links ?? [],
@@ -148,18 +149,29 @@ router.post("/tasks/magic-text", async (req, res) => {
   const formatter = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   const madridTime = formatter.format(new Date());
 
-  const prompt = `Actúa como un asistente personal ultra-inteligente. Analiza esta orden del usuario. La fecha y hora actual en España/Madrid es: ${madridTime}. REGLAS ESTRICTAS: 1. 'titulo': Extrae SOLO la acción principal. ELIMINA del título cualquier mención a fechas o horas. 2. 'fecha_vencimiento': Si menciona un día, calcúlalo basándote en la fecha actual y devuélvelo en formato "YYYY-MM-DD". Si no, null. 3. 'hora_vencimiento': Si menciona una hora, devuélvela en formato 24h "HH:mm". Si no, null. Devuelve SOLO un JSON válido: {"titulo": "string", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null"}. Texto del usuario: "${text}"`;
+  const prompt = `Actúa como un asistente personal ultra-inteligente. Analiza esta orden del usuario. La fecha y hora actual en España/Madrid es: ${madridTime}. 
+  REGLAS ESTRICTAS: 
+  1. 'titulo': Crea un título corto (MÁXIMO 5 PALABRAS) que resuma la acción principal. NO copies y pegues todo el texto. Elimina fechas, horas y enlaces.
+  2. 'descripcion': Redacta los detalles, notas o contexto adicional de forma limpia y profesional. Elimina la "paja" (ej. "recuérdame que"). Si la orden es muy corta y no hay detalles extra, devuelve null. NO pongas fechas ni enlaces aquí.
+  3. 'fecha_vencimiento': Formato "YYYY-MM-DD". Calcula la fecha exacta basándote en "hoy", "mañana", "el viernes", etc. Si no hay, null. 
+  4. 'hora_vencimiento': Formato 24h "HH:mm". Si no hay, null. 
+  5. 'links': Array de strings con las URLs detectadas. Si no hay, [].
+  Devuelve SOLO un JSON válido, sin markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null", "links": []}. 
+  Texto del usuario: "${text}"`;
 
-  let extractedTask = { titulo: text, fecha_vencimiento: null, hora_vencimiento: null };
+  let extractedTask = { titulo: text, descripcion: null, fecha_vencimiento: null, hora_vencimiento: null, links: [] };
 
   try {
     const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt });
     const aiText = response.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     const cleaned = aiText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const parsedData = JSON.parse(cleaned);
+
     extractedTask.titulo = parsedData.titulo || extractedTask.titulo;
+    extractedTask.descripcion = parsedData.descripcion || null;
     extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
     extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
+    extractedTask.links = parsedData.links || [];
 
     await db.update(userPreferencesTable).set({ 
       aiUsageCount: currentUsage + 1,
@@ -170,7 +182,13 @@ router.post("/tasks/magic-text", async (req, res) => {
   }
 
   const [task] = await db.insert(tasksTable).values({
-    userId, titulo: extractedTask.titulo, descripcion: text, fechaVencimiento: extractedTask.fecha_vencimiento ?? null, horaVencimiento: extractedTask.hora_vencimiento ?? null, proyecto: null,
+    userId, 
+    titulo: extractedTask.titulo, 
+    descripcion: extractedTask.descripcion ?? null, 
+    fechaVencimiento: extractedTask.fecha_vencimiento ?? null, 
+    horaVencimiento: extractedTask.hora_vencimiento ?? null, 
+    links: extractedTask.links || [],
+    proyecto: null,
   }).returning();
 
   // Sincronizar con Google Calendar
@@ -188,18 +206,19 @@ router.patch("/tasks/:id", async (req, res) => {
   if (!paramsParsed.success || !bodyParsed.success) return res.status(400).json({ error: "Invalid request" });
 
   const { id } = paramsParsed.data;
-  const updates = bodyParsed.data;
+  const updates = bodyParsed.data as any; // Usamos any temporalmente para inyectar rrule si viene
 
   const [task] = await db.update(tasksTable).set({
     ...(updates.titulo !== undefined && { titulo: updates.titulo }),
     ...(updates.descripcion !== undefined && { descripcion: updates.descripcion }),
     ...(updates.fechaVencimiento !== undefined && { fechaVencimiento: updates.fechaVencimiento }),
-    ...(updates.fechaFin !== undefined && { fechaFin: updates.fechaFin }), // <-- NUEVO
+    ...(updates.fechaFin !== undefined && { fechaFin: updates.fechaFin }),
     ...(updates.horaVencimiento !== undefined && { horaVencimiento: updates.horaVencimiento }),
     ...(updates.horaInicio !== undefined && { horaInicio: updates.horaInicio }),
     ...(updates.fechaNotificacion !== undefined && { fechaNotificacion: updates.fechaNotificacion }),
     ...(updates.horaNotificacion !== undefined && { horaNotificacion: updates.horaNotificacion }),
     ...(updates.proyecto !== undefined && { proyecto: updates.proyecto }),
+    ...(updates.rrule !== undefined && { rrule: updates.rrule }), // <-- AÑADIDO PARA TAREAS REPETITIVAS
     ...(updates.orden !== undefined && { orden: updates.orden }),
     ...(updates.links !== undefined && { links: updates.links }),
     ...(updates.notificaciones !== undefined && { notificaciones: updates.notificaciones }),
