@@ -18,6 +18,9 @@ import { PaywallModal } from './PaywallModal';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+const RRULE_DAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+const UI_DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
 function getAbsoluteNotifTime(fechaDesde: string | null, horaDesde: string | null, value: number, unit: string) {
   if (!fechaDesde || value <= 0) return { fechaNotificacion: null, horaNotificacion: null };
   const baseDate = new Date(`${fechaDesde}T${horaDesde || '00:00'}:00`);
@@ -115,7 +118,6 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> & { r
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPaywall, setShowPaywall] = useState(false);
 
-  // Estado para "Todo el día"
   const [isAllDay, setIsAllDay] = useState(false);
 
   useEffect(() => {
@@ -124,7 +126,6 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> & { r
       const taskData = existingTask || task;
       setLocalTask(taskData as any);
 
-      // Si no tiene horas, asumimos que es "Todo el día"
       setIsAllDay(!taskData.horaInicio && !taskData.horaVencimiento);
 
       if (taskData.fechaNotificacion) {
@@ -145,6 +146,35 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> & { r
     }
   };
 
+  const currentRepeat = !localTask.rrule ? 'none' 
+    : localTask.rrule === 'FREQ=DAILY' ? 'FREQ=DAILY'
+    : localTask.rrule === 'FREQ=WEEKLY' ? 'FREQ=WEEKLY'
+    : localTask.rrule === 'FREQ=MONTHLY' ? 'FREQ=MONTHLY'
+    : localTask.rrule === 'FREQ=YEARLY' ? 'FREQ=YEARLY'
+    : localTask.rrule.startsWith('FREQ=WEEKLY;BYDAY=') ? 'custom'
+    : 'none';
+
+  const handleRepeatChange = (val: string) => {
+    if (val === 'none') updateLocal({ rrule: null });
+    else if (val === 'custom') updateLocal({ rrule: 'FREQ=WEEKLY;BYDAY=MO' });
+    else updateLocal({ rrule: val });
+  };
+
+  const toggleCustomDay = (day: string) => {
+    const currentDaysStr = localTask.rrule?.replace('FREQ=WEEKLY;BYDAY=', '') || '';
+    let days = currentDaysStr ? currentDaysStr.split(',') : [];
+
+    if (days.includes(day)) {
+      days = days.filter(d => d !== day);
+    } else {
+      const newDaysSet = new Set([...days, day]);
+      days = RRULE_DAYS.filter(d => newDaysSet.has(d));
+    }
+
+    if (days.length === 0) days = ['MO']; 
+    updateLocal({ rrule: `FREQ=WEEKLY;BYDAY=${days.join(',')}` });
+  };
+
   const handleSave = () => {
     if (!user) return;
     const isNew = !localTask.id;
@@ -161,7 +191,7 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> & { r
       fechaNotificacion: localTask.fechaNotificacion, 
       horaNotificacion: localTask.horaNotificacion, 
       proyecto: localTask.proyecto, 
-      rrule: localTask.rrule, // <-- Guardamos la regla de repetición
+      rrule: localTask.rrule, 
       links: localTask.links, 
       completada: localTask.completada
     };
@@ -269,7 +299,6 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> & { r
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col justify-center gap-5">
 
-              {/* Switch Todo el día */}
               <div className="flex items-center justify-between pb-4 border-b border-gray-200/50">
                 <span className="text-sm font-semibold text-gray-900">Todo el día</span>
                 <Switch checked={isAllDay} onCheckedChange={handleAllDayToggle} />
@@ -304,21 +333,43 @@ export function TaskModal({ task, isOpen, onClose }: { task: Partial<Task> & { r
             </div>
 
             <div className="flex flex-col gap-4">
+
               {/* Selector de Repetición */}
-              <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex items-center justify-between gap-4 flex-1">
-                <span className="text-sm font-medium text-gray-900 flex items-center gap-2"><Repeat className="w-4 h-4 text-gray-400" /> Repetir</span>
-                <Select value={localTask.rrule || "none"} onValueChange={(val) => updateLocal({ rrule: val === "none" ? null : val })}>
-                  <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm w-auto min-w-[120px]">
-                    <SelectValue placeholder="Nunca" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="none">Nunca</SelectItem>
-                    <SelectItem value="FREQ=DAILY">Todos los días</SelectItem>
-                    <SelectItem value="FREQ=WEEKLY">Cada semana</SelectItem>
-                    <SelectItem value="FREQ=MONTHLY">Cada mes</SelectItem>
-                    <SelectItem value="FREQ=YEARLY">Cada año</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex flex-col gap-4 flex-1">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-medium text-gray-900 flex items-center gap-2"><Repeat className="w-4 h-4 text-gray-400" /> Repetir</span>
+                  <Select value={currentRepeat} onValueChange={handleRepeatChange}>
+                    <SelectTrigger className="bg-white border border-gray-200 rounded-xl h-[38px] px-3 text-sm font-medium text-gray-700 focus:ring-1 focus:ring-black shadow-sm w-auto min-w-[120px]">
+                      <SelectValue placeholder="Nunca" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="none">Nunca</SelectItem>
+                      <SelectItem value="FREQ=DAILY">Todos los días</SelectItem>
+                      <SelectItem value="FREQ=WEEKLY">Cada semana</SelectItem>
+                      <SelectItem value="FREQ=MONTHLY">Cada mes</SelectItem>
+                      <SelectItem value="FREQ=YEARLY">Cada año</SelectItem>
+                      <SelectItem value="custom">Personalizado...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {currentRepeat === 'custom' && (
+                  <div className="flex justify-between gap-1 pt-2 border-t border-gray-200/50 mt-1">
+                    {RRULE_DAYS.map((day, i) => {
+                      const isSelected = localTask.rrule?.includes(day);
+                      return (
+                        <button 
+                          key={day} 
+                          type="button" 
+                          onClick={() => toggleCustomDay(day)} 
+                          className={`w-9 h-9 rounded-full text-xs font-semibold transition-colors ${isSelected ? 'bg-black text-white' : 'bg-white border border-gray-200 text-gray-400 hover:border-gray-300'}`}
+                        >
+                          {UI_DAYS[i]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 flex items-center justify-between gap-4 flex-1">

@@ -87,10 +87,7 @@ router.post("/tasks", async (req, res) => {
     notificaciones: notificaciones ?? []
   }).returning();
 
-  // Sincronizar con Google Calendar
   await syncTaskToGoogle(task, userId);
-
-  // Programar notificación en QStash (Fire-and-forget)
   scheduleNotification(task).catch(err => req.log.error({ err }, "Error scheduling notification"));
 
   return res.status(201).json({ ...mapTask(task), attachments: [] });
@@ -149,12 +146,12 @@ router.post("/tasks/magic-text", async (req, res) => {
   const formatter = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   const madridTime = formatter.format(new Date());
 
-  const prompt = `Actúa como un asistente personal ultra-inteligente. Analiza esta orden del usuario. La fecha y hora actual en España/Madrid es: ${madridTime}. 
+  const prompt = `Actúa como un formateador fiel y asistente personal. Analiza esta orden del usuario. La fecha y hora actual en España/Madrid es: ${madridTime}. 
   REGLAS ESTRICTAS: 
-  1. 'titulo': Crea un título corto (MÁXIMO 5 PALABRAS) que resuma la acción principal. NO copies y pegues todo el texto. Elimina fechas, horas y enlaces.
-  2. 'descripcion': Redacta los detalles, notas o contexto adicional de forma limpia y profesional. Elimina la "paja" (ej. "recuérdame que"). Si la orden es muy corta y no hay detalles extra, devuelve null. NO pongas fechas ni enlaces aquí.
-  3. 'fecha_vencimiento': Formato "YYYY-MM-DD". Calcula la fecha exacta basándote en "hoy", "mañana", "el viernes", etc. Si no hay, null. 
-  4. 'hora_vencimiento': Formato 24h "HH:mm". Si no hay, null. 
+  1. 'titulo': Crea un título corto (MÁXIMO 5 PALABRAS) que resuma la acción principal.
+  2. 'descripcion': Mantén la información original INTACTA (incluyendo fechas, horas y enlaces). Solo dale un formato limpio y profesional (usa viñetas si hay varios puntos). NO resumas eliminando datos ni uses palabras raras. Si el texto es corto, déjalo tal cual.
+  3. 'fecha_vencimiento': Extrae la fecha en formato "YYYY-MM-DD" calculada desde hoy. Si no hay, null. 
+  4. 'hora_vencimiento': Extrae la hora en formato 24h "HH:mm". Si no hay, null. 
   5. 'links': Array de strings con las URLs detectadas. Si no hay, [].
   Devuelve SOLO un JSON válido, sin markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null", "links": []}. 
   Texto del usuario: "${text}"`;
@@ -191,10 +188,7 @@ router.post("/tasks/magic-text", async (req, res) => {
     proyecto: null,
   }).returning();
 
-  // Sincronizar con Google Calendar
   await syncTaskToGoogle(task, userId);
-
-  // Programar notificación en QStash (Fire-and-forget)
   scheduleNotification(task).catch(err => req.log.error({ err }, "Error scheduling notification"));
 
   return res.status(201).json({ ...task, attachments: [] });
@@ -206,7 +200,7 @@ router.patch("/tasks/:id", async (req, res) => {
   if (!paramsParsed.success || !bodyParsed.success) return res.status(400).json({ error: "Invalid request" });
 
   const { id } = paramsParsed.data;
-  const updates = bodyParsed.data as any; // Usamos any temporalmente para inyectar rrule si viene
+  const updates = bodyParsed.data as any;
 
   const [task] = await db.update(tasksTable).set({
     ...(updates.titulo !== undefined && { titulo: updates.titulo }),
@@ -218,7 +212,7 @@ router.patch("/tasks/:id", async (req, res) => {
     ...(updates.fechaNotificacion !== undefined && { fechaNotificacion: updates.fechaNotificacion }),
     ...(updates.horaNotificacion !== undefined && { horaNotificacion: updates.horaNotificacion }),
     ...(updates.proyecto !== undefined && { proyecto: updates.proyecto }),
-    ...(updates.rrule !== undefined && { rrule: updates.rrule }), // <-- AÑADIDO PARA TAREAS REPETITIVAS
+    ...(updates.rrule !== undefined && { rrule: updates.rrule }),
     ...(updates.orden !== undefined && { orden: updates.orden }),
     ...(updates.links !== undefined && { links: updates.links }),
     ...(updates.notificaciones !== undefined && { notificaciones: updates.notificaciones }),
@@ -228,10 +222,7 @@ router.patch("/tasks/:id", async (req, res) => {
 
   if (!task) return res.status(404).json({ error: "Task not found" });
 
-  // Sincronizar con Google Calendar
   await syncTaskToGoogle(task, task.userId);
-
-  // Reprogramar notificación en QStash si cambiaron las fechas (Fire-and-forget)
   scheduleNotification(task).catch(err => req.log.error({ err }, "Error scheduling notification"));
 
   return res.json(mapTask(task));
@@ -245,15 +236,8 @@ router.delete("/tasks/:id", async (req, res) => {
 
   if (task) {
     await db.delete(tasksTable).where(eq(tasksTable.id, parsed.data.id));
-
-    if (task.googleEventId) {
-      await deleteTaskFromGoogle(task.googleEventId, task.userId);
-    }
-
-    // Cancelar notificación en QStash si existía
-    if (task.qstashMessageId) {
-      cancelNotification(task.qstashMessageId).catch(err => req.log.error({ err }, "Error canceling notification"));
-    }
+    if (task.googleEventId) await deleteTaskFromGoogle(task.googleEventId, task.userId);
+    if (task.qstashMessageId) cancelNotification(task.qstashMessageId).catch(err => req.log.error({ err }, "Error canceling notification"));
   }
 
   return res.status(204).send();
@@ -282,20 +266,10 @@ router.get("/tasks/metadata", async (req, res) => {
     const options = { 
       url, 
       timeout: 5000,
-      fetchOptions: {
-        headers: {
-          'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
-        }
-      }
+      fetchOptions: { headers: { 'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)' } }
     };
     const { result } = await ogs(options);
-
-    return res.json({ 
-      title: result.ogTitle || result.twitterTitle || url, 
-      description: result.ogDescription || result.twitterDescription || null, 
-      image: result.ogImage?.[0]?.url || result.twitterImage?.[0]?.url || null, 
-      url 
-    });
+    return res.json({ title: result.ogTitle || result.twitterTitle || url, description: result.ogDescription || result.twitterDescription || null, image: result.ogImage?.[0]?.url || result.twitterImage?.[0]?.url || null, url });
   } catch (e) {
     return res.json({ title: url, description: null, image: null, url });
   }

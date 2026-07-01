@@ -12,7 +12,6 @@ router.post("/transcribe", async (req, res) => {
 
   const { userId, audioBase64, mimeType } = parsed.data;
 
-  // 1. COMPROBAR LÍMITES Y RESETEO MENSUAL
   let [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
   if (!prefs) {
     [prefs] = await db.insert(userPreferencesTable).values({ userId }).returning();
@@ -21,12 +20,11 @@ router.post("/transcribe", async (req, res) => {
   const now = new Date();
   const resetDate = new Date(prefs.aiUsageResetDate);
   const nextReset = new Date(resetDate);
-  nextReset.setMonth(nextReset.getMonth() + 1); // Sumamos 1 mes
+  nextReset.setMonth(nextReset.getMonth() + 1);
 
   let currentUsage = prefs.aiUsageCount;
   let newResetDate = prefs.aiUsageResetDate;
 
-  // Si ya ha pasado un mes, reseteamos el contador
   if (now >= nextReset) {
     currentUsage = 0;
     newResetDate = now;
@@ -41,16 +39,15 @@ router.post("/transcribe", async (req, res) => {
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // Inyectamos la hora local de España para que la IA calcule bien "mañana", "hoy", etc.
   const formatter = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   const madridTime = formatter.format(new Date());
 
   const prompt = `Extrae de este audio una tarea. La fecha y hora actual en España/Madrid es: ${madridTime}.
   REGLAS ESTRICTAS: 
-  1. 'titulo': Crea un título corto (MÁXIMO 5 PALABRAS) que resuma la acción principal. NO copies todo el texto. Elimina fechas, horas y enlaces del título.
-  2. 'descripcion': Redacta los detalles o contexto de forma limpia y profesional. Elimina muletillas como "recuérdame que". Si el audio es corto y no hay detalles extra, devuelve null. NO pongas fechas ni enlaces aquí.
-  3. 'fecha_vencimiento': Formato "YYYY-MM-DD" calculado desde hoy. Si no hay, null.
-  4. 'hora_vencimiento': Formato 24h "HH:mm". Si no hay, null.
+  1. 'titulo': Crea un título corto (MÁXIMO 5 PALABRAS) que resuma la acción principal.
+  2. 'descripcion': Mantén la información original INTACTA (incluyendo fechas, horas y enlaces). Solo dale un formato limpio y profesional (usa viñetas si hay varios puntos). NO resumas eliminando datos ni uses palabras raras. Si el texto es corto, déjalo tal cual.
+  3. 'fecha_vencimiento': Extrae la fecha en formato "YYYY-MM-DD" calculada desde hoy. Si no hay, null.
+  4. 'hora_vencimiento': Extrae la hora en formato 24h "HH:mm". Si no hay, null.
   5. 'links': Array de strings con URLs detectadas. Si no hay, [].
   Devuelve SOLO un JSON válido, sin markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null", "links": []}`;
 
@@ -70,7 +67,6 @@ router.post("/transcribe", async (req, res) => {
     extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
     extractedTask.links = parsedData.links || [];
 
-    // 2. ACTUALIZAR CONTADOR Y FECHA DE RESETEO
     await db.update(userPreferencesTable).set({ 
       aiUsageCount: currentUsage + 1,
       aiUsageResetDate: newResetDate
