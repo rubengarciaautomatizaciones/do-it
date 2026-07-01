@@ -18,7 +18,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png'], // <-- CAMBIADO
       workbox: {
-        navigateFallbackDenylist: [/^\/api/],
+        navigateFallbackDenylist: [/^\/api/, /^\/sitemap\.xml/, /^\/robots\.txt/],
         importScripts: ['/push-sw.js'],
         maximumFileSizeToCacheInBytes: 5000000 
       },
