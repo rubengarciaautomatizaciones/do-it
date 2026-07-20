@@ -117,6 +117,28 @@ router.post("/tasks/magic-text", async (req, res) => {
 
   const { text, userId } = parsed.data;
 
+  let [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
+  if (!prefs) {
+    [prefs] = await db.insert(userPreferencesTable).values({ userId }).returning();
+  }
+
+  const now = new Date();
+  const resetDate = new Date(prefs.aiUsageResetDate);
+  const nextReset = new Date(resetDate);
+  nextReset.setMonth(nextReset.getMonth() + 1);
+
+  let currentUsage = prefs.aiUsageCount;
+  let newResetDate = prefs.aiUsageResetDate;
+
+  if (now >= nextReset) {
+    currentUsage = 0;
+    newResetDate = now;
+  }
+
+  if (!prefs.isPremium && currentUsage >= 3) {
+    return res.status(403).json({ error: "LIMIT_REACHED", message: "Has alcanzado el límite de 3 usos gratuitos." });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
 
@@ -129,12 +151,13 @@ router.post("/tasks/magic-text", async (req, res) => {
   1. 'titulo': Crea un título corto (MÁXIMO 5 PALABRAS) que resuma la acción principal.
   2. 'descripcion': Mantén la información original INTACTA. Formatea el texto en HTML BÁSICO (<p>, <ul>, <li>, <strong>, <br>). Si hay varios puntos o listas, usa etiquetas <ul> y <li>. NO uses markdown (ni asteriscos ni hashtags). Si el texto es corto, envuélvelo en un <p>. Si no hay detalles extra, devuelve null.
   3. 'fecha_vencimiento': Extrae la fecha en formato "YYYY-MM-DD" calculada desde hoy. Si no hay, null. 
-  4. 'hora_vencimiento': Extrae la hora en formato 24h "HH:mm". Si no hay, null. 
-  5. 'links': Array de strings con las URLs detectadas. Si no hay, [].
-  Devuelve SOLO un JSON válido, sin bloques de código markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null", "links": []}. 
+  4. 'hora_inicio': Extrae la hora de inicio en formato 24h "HH:mm". Si el usuario dice "a las 9", pon "09:00". Si no hay, null.
+  5. 'hora_vencimiento': Extrae la hora de fin en formato 24h "HH:mm". Si el usuario no especifica fin, calcúlala sumando 1 hora a la hora_inicio. Si no hay, null.
+  6. 'links': Array de strings con las URLs detectadas. Si no hay, [].
+  Devuelve SOLO un JSON válido, sin bloques de código markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_inicio": "string|null", "hora_vencimiento": "string|null", "links": []}. 
   Texto del usuario: "${text}"`;
 
-  let extractedTask = { titulo: text, descripcion: null, fecha_vencimiento: null, hora_vencimiento: null, links: [] };
+  let extractedTask = { titulo: text, descripcion: null, fecha_vencimiento: null, hora_inicio: null, hora_vencimiento: null, links: [] };
 
   try {
     const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt });
@@ -145,8 +168,14 @@ router.post("/tasks/magic-text", async (req, res) => {
     extractedTask.titulo = parsedData.titulo || extractedTask.titulo;
     extractedTask.descripcion = parsedData.descripcion || null;
     extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
+    extractedTask.hora_inicio = parsedData.hora_inicio || null;
     extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
     extractedTask.links = parsedData.links || [];
+
+    await db.update(userPreferencesTable).set({ 
+      aiUsageCount: currentUsage + 1,
+      aiUsageResetDate: newResetDate
+    }).where(eq(userPreferencesTable.userId, userId));
   } catch (err) {
     req.log.error({ err }, "Gemini text extraction failed");
   }
@@ -156,6 +185,7 @@ router.post("/tasks/magic-text", async (req, res) => {
     titulo: extractedTask.titulo, 
     descripcion: extractedTask.descripcion ?? null, 
     fechaVencimiento: extractedTask.fecha_vencimiento ?? null, 
+    horaInicio: extractedTask.hora_inicio ?? null,
     horaVencimiento: extractedTask.hora_vencimiento ?? null, 
     links: extractedTask.links || [],
     proyecto: null,

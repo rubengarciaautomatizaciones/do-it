@@ -11,9 +11,9 @@ const oauth2Client = new google.auth.OAuth2(
 export function getGoogleAuthUrl(userId: string) {
   return oauth2Client.generateAuthUrl({
     access_type: "offline",
-    prompt: "consent", // Fuerza a que nos den el refresh_token siempre
+    prompt: "consent",
     scope: ["https://www.googleapis.com/auth/calendar"],
-    state: userId, // Pasamos el ID del usuario para saber de quién es el token al volver
+    state: userId,
   });
 }
 
@@ -23,11 +23,9 @@ export async function handleGoogleCallback(code: string, userId: string) {
 
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-  // 1. Buscar si ya existe el calendario "Do it!"
   const calendarList = await calendar.calendarList.list();
   let doItCalendar = calendarList.data.items?.find(c => c.summary === "Do it!");
 
-  // 2. Si no existe, lo creamos
   if (!doItCalendar) {
     const newCal = await calendar.calendars.insert({
       requestBody: { summary: "Do it!", description: "Tareas sincronizadas desde la app Do it!" }
@@ -35,7 +33,6 @@ export async function handleGoogleCallback(code: string, userId: string) {
     doItCalendar = newCal.data;
   }
 
-  // 3. Guardar en base de datos
   if (tokens.refresh_token && doItCalendar?.id) {
     await db.update(userPreferencesTable)
       .set({ googleRefreshToken: tokens.refresh_token, googleCalendarId: doItCalendar.id })
@@ -44,7 +41,6 @@ export async function handleGoogleCallback(code: string, userId: string) {
 }
 
 export async function syncTaskToGoogle(task: any, userId: string) {
-  // Solo sincronizamos si tiene fecha de inicio (Desde)
   if (!task.fechaVencimiento) return;
 
   const [prefs] = await db.select().from(userPreferencesTable).where(eq(userPreferencesTable.userId, userId));
@@ -54,21 +50,23 @@ export async function syncTaskToGoogle(task: any, userId: string) {
   const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
   let startDateTime, endDateTime;
-
-  // Usamos fechaFin si existe, si no, usamos fechaVencimiento (Desde)
   const fechaFinReal = task.fechaFin || task.fechaVencimiento;
 
+  // Lógica robusta de fechas con zona horaria de España (+02:00)
   if (task.horaInicio && task.horaVencimiento) {
-    startDateTime = `${task.fechaVencimiento}T${task.horaInicio}:00`;
-    endDateTime = `${fechaFinReal}T${task.horaVencimiento}:00`;
+    startDateTime = `${task.fechaVencimiento}T${task.horaInicio}:00+02:00`;
+    endDateTime = `${fechaFinReal}T${task.horaVencimiento}:00+02:00`;
+  } else if (task.horaInicio) {
+    startDateTime = `${task.fechaVencimiento}T${task.horaInicio}:00+02:00`;
+    const [h, m] = task.horaInicio.split(':');
+    const endH = String((parseInt(h) + 1) % 24).padStart(2, '0');
+    endDateTime = `${fechaFinReal}T${endH}:${m}:00+02:00`;
   } else if (task.horaVencimiento) {
-    // Si solo hay hora de fin, asumimos 1 hora de duración hacia atrás
-    endDateTime = `${fechaFinReal}T${task.horaVencimiento}:00`;
-    const startDate = new Date(endDateTime);
-    startDate.setHours(startDate.getHours() - 1);
-    startDateTime = startDate.toISOString().slice(0, 19);
+    endDateTime = `${fechaFinReal}T${task.horaVencimiento}:00+02:00`;
+    const [h, m] = task.horaVencimiento.split(':');
+    const startH = String((parseInt(h) - 1 + 24) % 24).padStart(2, '0');
+    startDateTime = `${task.fechaVencimiento}T${startH}:${m}:00+02:00`;
   } else {
-    // Evento de todo el día
     startDateTime = task.fechaVencimiento;
     const endDate = new Date(fechaFinReal);
     endDate.setDate(endDate.getDate() + 1);
@@ -80,24 +78,21 @@ export async function syncTaskToGoogle(task: any, userId: string) {
     description: task.descripcion || "",
     start: startDateTime.includes('T') ? { dateTime: startDateTime, timeZone: "Europe/Madrid" } : { date: startDateTime },
     end: endDateTime.includes('T') ? { dateTime: endDateTime, timeZone: "Europe/Madrid" } : { date: endDateTime },
-    colorId: "8", // Color Grafito por defecto
+    colorId: "8",
   };
 
   try {
     if (task.googleEventId) {
-      // Actualizar evento existente
       await calendar.events.update({
         calendarId: prefs.googleCalendarId,
         eventId: task.googleEventId,
         requestBody: eventBody,
       });
     } else {
-      // Crear nuevo evento
       const res = await calendar.events.insert({
         calendarId: prefs.googleCalendarId,
         requestBody: eventBody,
       });
-      // Guardar el ID del evento en nuestra BD
       if (res.data.id) {
         await db.update(tasksTable).set({ googleEventId: res.data.id }).where(eq(tasksTable.id, task.id));
       }

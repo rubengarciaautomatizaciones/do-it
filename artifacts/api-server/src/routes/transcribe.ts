@@ -47,11 +47,12 @@ router.post("/transcribe", async (req, res) => {
   1. 'titulo': Crea un título corto (MÁXIMO 5 PALABRAS) que resuma la acción principal.
   2. 'descripcion': Mantén la información original INTACTA. Formatea el texto en HTML BÁSICO (<p>, <ul>, <li>, <strong>, <br>). Si hay varios puntos o listas, usa etiquetas <ul> y <li>. NO uses markdown (ni asteriscos ni hashtags). Si el texto es corto, envuélvelo en un <p>. Si no hay detalles extra, devuelve null.
   3. 'fecha_vencimiento': Extrae la fecha en formato "YYYY-MM-DD" calculada desde hoy. Si no hay, null.
-  4. 'hora_vencimiento': Extrae la hora en formato 24h "HH:mm". Si no hay, null.
-  5. 'links': Array de strings con URLs detectadas. Si no hay, [].
-  Devuelve SOLO un JSON válido, sin bloques de código markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_vencimiento": "string|null", "links": []}`;
+  4. 'hora_inicio': Extrae la hora de inicio en formato 24h "HH:mm". Si el usuario dice "a las 9", pon "09:00". Si no hay, null.
+  5. 'hora_vencimiento': Extrae la hora de fin en formato 24h "HH:mm". Si el usuario no especifica fin, calcúlala sumando 1 hora a la hora_inicio. Si no hay, null.
+  6. 'links': Array de strings con URLs detectadas. Si no hay, [].
+  Devuelve SOLO un JSON válido, sin bloques de código markdown: {"titulo": "string", "descripcion": "string|null", "fecha_vencimiento": "string|null", "hora_inicio": "string|null", "hora_vencimiento": "string|null", "links": []}`;
 
-  let extractedTask = { titulo: "Nota de voz", descripcion: null, fecha_vencimiento: null, hora_vencimiento: null, links: [] };
+  let extractedTask = { titulo: "Nota de voz", descripcion: null, fecha_vencimiento: null, hora_inicio: null, hora_vencimiento: null, links: [] };
 
   try {
     const response = await ai.models.generateContent({
@@ -64,6 +65,7 @@ router.post("/transcribe", async (req, res) => {
     extractedTask.titulo = parsedData.titulo || extractedTask.titulo;
     extractedTask.descripcion = parsedData.descripcion || null;
     extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
+    extractedTask.hora_inicio = parsedData.hora_inicio || null;
     extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
     extractedTask.links = parsedData.links || [];
 
@@ -80,6 +82,7 @@ router.post("/transcribe", async (req, res) => {
     titulo: extractedTask.titulo || "Nota de Voz",
     descripcion: extractedTask.descripcion ?? null,
     fechaVencimiento: extractedTask.fecha_vencimiento ?? null,
+    horaInicio: extractedTask.hora_inicio ?? null,
     horaVencimiento: extractedTask.hora_vencimiento ?? null,
     links: extractedTask.links || [],
   }).returning();
@@ -87,4 +90,4 @@ router.post("/transcribe", async (req, res) => {
   return res.status(201).json(task);
 });
 
-export default router;prompt
+export default router;
