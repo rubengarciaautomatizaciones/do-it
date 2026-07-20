@@ -52,20 +52,21 @@ export async function syncTaskToGoogle(task: any, userId: string) {
   let startDateTime, endDateTime;
   const fechaFinReal = task.fechaFin || task.fechaVencimiento;
 
-  // Lógica robusta de fechas con zona horaria de España (+02:00)
+  // ⚠️ MEJORA ARQUITECTÓNICA: Pasamos la hora exacta y delegamos el offset a Google
+  // para evitar bugs de 1 hora de diferencia durante el horario de invierno.
   if (task.horaInicio && task.horaVencimiento) {
-    startDateTime = `${task.fechaVencimiento}T${task.horaInicio}:00+02:00`;
-    endDateTime = `${fechaFinReal}T${task.horaVencimiento}:00+02:00`;
+    startDateTime = `${task.fechaVencimiento}T${task.horaInicio}:00`;
+    endDateTime = `${fechaFinReal}T${task.horaVencimiento}:00`;
   } else if (task.horaInicio) {
-    startDateTime = `${task.fechaVencimiento}T${task.horaInicio}:00+02:00`;
+    startDateTime = `${task.fechaVencimiento}T${task.horaInicio}:00`;
     const [h, m] = task.horaInicio.split(':');
     const endH = String((parseInt(h) + 1) % 24).padStart(2, '0');
-    endDateTime = `${fechaFinReal}T${endH}:${m}:00+02:00`;
+    endDateTime = `${fechaFinReal}T${endH}:${m}:00`;
   } else if (task.horaVencimiento) {
-    endDateTime = `${fechaFinReal}T${task.horaVencimiento}:00+02:00`;
+    endDateTime = `${fechaFinReal}T${task.horaVencimiento}:00`;
     const [h, m] = task.horaVencimiento.split(':');
     const startH = String((parseInt(h) - 1 + 24) % 24).padStart(2, '0');
-    startDateTime = `${task.fechaVencimiento}T${startH}:${m}:00+02:00`;
+    startDateTime = `${task.fechaVencimiento}T${startH}:${m}:00`;
   } else {
     startDateTime = task.fechaVencimiento;
     const endDate = new Date(fechaFinReal);
@@ -76,6 +77,7 @@ export async function syncTaskToGoogle(task: any, userId: string) {
   const eventBody = {
     summary: task.completada ? `✅ ${task.titulo}` : task.titulo,
     description: task.descripcion || "",
+    // Aquí Google procesa "Europe/Madrid" y aplica el +01:00 o +02:00 automáticamente
     start: startDateTime.includes('T') ? { dateTime: startDateTime, timeZone: "Europe/Madrid" } : { date: startDateTime },
     end: endDateTime.includes('T') ? { dateTime: endDateTime, timeZone: "Europe/Madrid" } : { date: endDateTime },
     colorId: "8",
