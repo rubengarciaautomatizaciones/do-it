@@ -58,7 +58,7 @@ export function MagicInput() {
   const nextIdRef = useRef<number>(100);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef.current = [];
+  const chunksRef = useRef<Blob[]>([]);
 
   const queryClient = useQueryClient();
   const createMagicTask = useCreateMagicTextTask(); 
