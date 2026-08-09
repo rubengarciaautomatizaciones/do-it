@@ -29,7 +29,7 @@ const getSupportedAudioMimeType = () => {
   return undefined;
 };
 
-// Determina el número exacto de barritas para que nacen JUSTO en el borde visible del móvil sin retrasos
+// Determina el número exacto de barritas para que nacen JUSTO en el borde visible del dispositivo
 const getResponsiveBarCount = () => {
   if (typeof window === 'undefined') return 24;
   const width = window.innerWidth;
@@ -175,7 +175,7 @@ export function MagicInput() {
     setStream(null);
   };
 
-  // ANIMACIÓN RESPONSIVA EN TIEMPO REAL AL INSTANTE EN MÓVIL Y DESKTOP
+  // DETECTOR DE VOZ HUMANA CON FILTRADO DE ESPECTRO Y UMBRAL STRICTO ANTI-RUIDO (MÓVIL Y ORDENADOR)
   useEffect(() => {
     if (!isRecording || !stream) return;
 
@@ -191,8 +191,8 @@ export function MagicInput() {
       const analyser = audioCtx.createAnalyser();
       const source = audioCtx.createMediaStreamSource(stream);
       source.connect(analyser);
-      analyser.fftSize = 64;
-      analyser.smoothingTimeConstant = 0.6;
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.5;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
@@ -216,19 +216,22 @@ export function MagicInput() {
           currentOffset %= stepWidth;
 
           analyser.getByteFrequencyData(dataArray);
-          let sum = 0;
-          for (let i = 0; i < 8; i++) {
-            sum += dataArray[i] || 0;
-          }
-          const avg = sum / 8;
 
-          const NOISE_FLOOR = 10;
+          // Aislamiento de frecuencias de voz humana (~200Hz a ~2500Hz)
+          let vocalSum = 0;
+          for (let i = 2; i <= 16; i++) {
+            vocalSum += dataArray[i] || 0;
+          }
+          const vocalAvg = vocalSum / 15;
+
+          // Umbral estricto (32) para eliminar ganancia de fondo en teléfonos y PCs
+          const NOISE_FLOOR = 32;
           let calculatedHeight = 4;
           let isVoice = false;
 
-          if (avg > NOISE_FLOOR) {
-            const normalized = Math.min(1, (avg - NOISE_FLOOR) / 45);
-            calculatedHeight = 4 + (normalized * 24);
+          if (vocalAvg > NOISE_FLOOR) {
+            const normalized = Math.min(1, (vocalAvg - NOISE_FLOOR) / 45);
+            calculatedHeight = 4 + (normalized * 24); // 6px a 28px
             isVoice = true;
           }
 
