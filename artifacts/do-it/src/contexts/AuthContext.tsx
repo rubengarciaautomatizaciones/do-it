@@ -21,19 +21,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setUserId(session?.user?.id ?? null); // Seteo global del usuario
+      const activeSession = session || (import.meta.env.DEV ? ({ user: { id: 'demo-user', email: 'demo@doit.local' } } as any) : null);
+      setSession(activeSession);
+      setUser(activeSession?.user ?? null);
+      setUserId(activeSession?.user?.id ?? null);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setUserId(session?.user?.id ?? null);
-      if (event === 'PASSWORD_RECOVERY') {
+      const activeSession = session || (import.meta.env.DEV ? ({ user: { id: 'demo-user', email: 'demo@doit.local' } } as any) : null);
+      setSession(activeSession);
+      setUser(activeSession?.user ?? null);
+      setUserId(activeSession?.user?.id ?? null);
+      if (_event === 'PASSWORD_RECOVERY') {
         window.location.href = '/profile?recovery=true';
-      }// Seteo global del usuario
+      }
     });
 
     return () => subscription.unsubscribe();
