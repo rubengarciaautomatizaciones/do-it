@@ -29,6 +29,16 @@ const getSupportedAudioMimeType = () => {
   return undefined;
 };
 
+// Determina el número exacto de barritas para que nacen JUSTO en el borde visible del móvil sin retrasos
+const getResponsiveBarCount = () => {
+  if (typeof window === 'undefined') return 24;
+  const width = window.innerWidth;
+  if (width < 400) return 20;      // Pantallas pequeñas de móvil (iPhone SE / Android pequeño)
+  if (width < 640) return 24;      // Móviles normales (iPhone 13/14/15, Galaxy S)
+  if (width < 768) return 36;      // Tablets
+  return 48;                       // Ordenador
+};
+
 export function MagicInput() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -38,20 +48,32 @@ export function MagicInput() {
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   
-  // Tira de 65 barritas con posiciones fijas e inmutables
+  const [barCount, setBarCount] = useState<number>(getResponsiveBarCount);
+  
+  // Tira adaptada al tamaño exacto de la pantalla
   const [audioBars, setAudioBars] = useState<WaveBar[]>(() => 
-    Array.from({ length: 65 }, (_, i) => ({ id: i, height: 4, isVoice: false }))
+    Array.from({ length: getResponsiveBarCount() }, (_, i) => ({ id: i, height: 4, isVoice: false }))
   );
   const [scrollOffset, setScrollOffset] = useState<number>(0);
   const nextIdRef = useRef<number>(100);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const chunksRef.current = [];
 
   const queryClient = useQueryClient();
   const createMagicTask = useCreateMagicTextTask(); 
   const transcribeAudio = useTranscribeAudio();
   const addAttachment = useAddTaskAttachment();
+
+  // Actualizar barCount si se redimensiona la ventana
+  useEffect(() => {
+    const handleResize = () => {
+      const count = getResponsiveBarCount();
+      setBarCount(count);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +101,6 @@ export function MagicInput() {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setStream(audioStream);
 
-      // Compatibilidad móvil universal (iOS Safari no soporta 'audio/webm')
       const mimeType = getSupportedAudioMimeType();
       const options = mimeType ? { mimeType } : undefined;
       const mediaRecorder = new MediaRecorder(audioStream, options);
@@ -154,7 +175,7 @@ export function MagicInput() {
     setStream(null);
   };
 
-  // DESPLAZAMIENTO FLUIDO CONTINUO TIPO VÍDEO A 60 FPS CON COMPATIBILIDAD MÓVIL UNIVERSAL
+  // ANIMACIÓN RESPONSIVA EN TIEMPO REAL AL INSTANTE EN MÓVIL Y DESKTOP
   useEffect(() => {
     if (!isRecording || !stream) return;
 
@@ -179,7 +200,8 @@ export function MagicInput() {
       let currentOffset = 0;
       let lastTime = performance.now();
 
-      setAudioBars(Array.from({ length: 65 }, (_, i) => ({ id: i, height: 4, isVoice: false })));
+      const count = getResponsiveBarCount();
+      setAudioBars(Array.from({ length: count }, (_, i) => ({ id: i, height: 4, isVoice: false })));
       setScrollOffset(0);
 
       const updateLoop = () => {
@@ -264,9 +286,9 @@ export function MagicInput() {
             {/* CONTENEDOR CON DESPLAZAMIENTO LÍQUIDO CONTINUO A 60 FPS Y CAPAS DE DEGRADADO */}
             <div className="flex-1 px-1 flex items-center justify-center h-8 overflow-hidden relative">
               {/* Capa desvanecimiento izquierda */}
-              <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white via-white/80 to-transparent z-10 pointer-events-none" />
+              <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-12 bg-gradient-to-r from-white via-white/80 to-transparent z-10 pointer-events-none" />
 
-              {/* Tira en movimiento continuo a 60 FPS por hardware (GPU translate3d) */}
+              {/* Tira adaptada al ancho exacto del dispositivo para respuesta instantánea */}
               <div 
                 className="flex items-center justify-center gap-[4px] h-8 will-change-transform"
                 style={{ transform: `translate3d(-${scrollOffset}px, 0, 0)` }}
@@ -283,7 +305,7 @@ export function MagicInput() {
               </div>
 
               {/* Capa desvanecimiento derecha */}
-              <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white via-white/80 to-transparent z-10 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-12 bg-gradient-to-l from-white via-white/80 to-transparent z-10 pointer-events-none" />
             </div>
 
             {/* Botonera de Acción estilo ChatGPT */}
