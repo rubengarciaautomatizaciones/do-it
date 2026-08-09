@@ -34,10 +34,12 @@ router.post("/transcribe", async (req, res) => {
     return res.status(403).json({ error: "LIMIT_REACHED", message: "Has alcanzado el límite de 3 usos gratuitos." });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
+  const groqApiKey = process.env.GROQ_API_KEY;
+  const geminiApiKey = process.env.GEMINI_API_KEY;
 
-  const ai = new GoogleGenAI({ apiKey });
+  if (!groqApiKey && !geminiApiKey) {
+    return res.status(500).json({ error: "Neither GROQ_API_KEY nor GEMINI_API_KEY is configured" });
+  }
 
   const formatter = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   const madridTime = formatter.format(new Date());
@@ -55,26 +57,85 @@ router.post("/transcribe", async (req, res) => {
   let extractedTask = { titulo: "Nota de voz", descripcion: null, fecha_vencimiento: null, hora_inicio: null, hora_vencimiento: null, links: [] };
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ inlineData: { mimeType, data: audioBase64 } }, { text: prompt }] }],
-    });
-    const cleaned = (response.candidates?.[0]?.content?.parts?.[0]?.text ?? "").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsedData = JSON.parse(cleaned);
+    if (groqApiKey) {
+      // Fast Groq pipeline: 1. Transcribe audio with Whisper 2. Extract JSON with Llama 3.3
+      const audioBuffer = Buffer.from(audioBase64, 'base64');
+      const audioBlob = new Blob([audioBuffer], { type: mimeType || 'audio/webm' });
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'audio.webm');
+      formData.append('model', 'whisper-large-v3-turbo');
+      formData.append('language', 'es');
+      formData.append('response_format', 'json');
 
-    extractedTask.titulo = parsedData.titulo || extractedTask.titulo;
-    extractedTask.descripcion = parsedData.descripcion || null;
-    extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
-    extractedTask.hora_inicio = parsedData.hora_inicio || null;
-    extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
-    extractedTask.links = parsedData.links || [];
+      const sttResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${groqApiKey}` },
+        body: formData,
+      });
+
+      if (!sttResponse.ok) {
+        const errText = await sttResponse.text();
+        throw new Error(`Groq STT failed (${sttResponse.status}): ${errText}`);
+      }
+
+      const sttData = await sttResponse.json() as { text?: string };
+      const transcribedText = sttData.text || "";
+
+      const llmPrompt = `${prompt}\n\nTexto transcrito del audio del usuario: "${transcribedText}"`;
+      const llmResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${groqApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: llmPrompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+        }),
+      });
+
+      if (!llmResponse.ok) {
+        const errText = await llmResponse.text();
+        throw new Error(`Groq LLM failed (${llmResponse.status}): ${errText}`);
+      }
+
+      const llmData = await llmResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
+      const aiText = llmData.choices?.[0]?.message?.content ?? "";
+      const cleaned = aiText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsedData = JSON.parse(cleaned);
+
+      extractedTask.titulo = parsedData.titulo || (transcribedText.slice(0, 30) || extractedTask.titulo);
+      extractedTask.descripcion = parsedData.descripcion || null;
+      extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
+      extractedTask.hora_inicio = parsedData.hora_inicio || null;
+      extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
+      extractedTask.links = parsedData.links || [];
+    } else {
+      // Fallback to Gemini if GROQ_API_KEY is not set
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey! });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [{ inlineData: { mimeType, data: audioBase64 } }, { text: prompt }] }],
+      });
+      const cleaned = (response.candidates?.[0]?.content?.parts?.[0]?.text ?? "").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsedData = JSON.parse(cleaned);
+
+      extractedTask.titulo = parsedData.titulo || extractedTask.titulo;
+      extractedTask.descripcion = parsedData.descripcion || null;
+      extractedTask.fecha_vencimiento = parsedData.fecha_vencimiento || null;
+      extractedTask.hora_inicio = parsedData.hora_inicio || null;
+      extractedTask.hora_vencimiento = parsedData.hora_vencimiento || null;
+      extractedTask.links = parsedData.links || [];
+    }
 
     await db.update(userPreferencesTable).set({ 
       aiUsageCount: currentUsage + 1,
       aiUsageResetDate: newResetDate
     }).where(eq(userPreferencesTable.userId, userId));
   } catch (err) {
-    req.log.error({ err }, "Gemini transcription failed");
+    req.log.error({ err }, "Transcription/AI extraction failed");
   }
 
   const [task] = await db.insert(tasksTable).values({
