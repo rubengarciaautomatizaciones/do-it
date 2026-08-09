@@ -14,6 +14,21 @@ interface WaveBar {
   isVoice: boolean;
 }
 
+const getSupportedAudioMimeType = () => {
+  if (typeof MediaRecorder === 'undefined') return undefined;
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/aac',
+    'audio/ogg'
+  ];
+  for (const type of candidates) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return undefined;
+};
+
 export function MagicInput() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -63,7 +78,11 @@ export function MagicInput() {
     try {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setStream(audioStream);
-      const mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+
+      // Compatibilidad móvil universal (iOS Safari no soporta 'audio/webm')
+      const mimeType = getSupportedAudioMimeType();
+      const options = mimeType ? { mimeType } : undefined;
+      const mediaRecorder = new MediaRecorder(audioStream, options);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -91,14 +110,16 @@ export function MagicInput() {
   const acceptRecording = () => {
     if (!mediaRecorderRef.current || !isRecording) return;
     mediaRecorderRef.current.onstop = async () => {
-      const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+      const mimeType = getSupportedAudioMimeType() || 'audio/webm';
+      const audioBlob = new Blob(chunksRef.current, { type: mimeType });
       stream?.getTracks().forEach(track => track.stop());
       if (!user) return;
 
       toast({ title: "Procesando audio...", description: "Extrayendo tarea con IA en <1s." });
 
       try {
-        const fileName = `voz-${Date.now()}.webm`;
+        const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('aac') ? 'aac' : 'webm';
+        const fileName = `voz-${Date.now()}.${ext}`;
         const { data: uploadData, error: uploadError } = await supabase.storage.from('attachments').upload(`${user.id}/${fileName}`, audioBlob);
 
         let publicUrl = "";
@@ -110,9 +131,9 @@ export function MagicInput() {
         reader.readAsDataURL(audioBlob);
         reader.onloadend = () => {
           const base64data = (reader.result as string).split(',')[1];
-          transcribeAudio.mutate({ data: { userId: user.id, audioBase64: base64data, mimeType: 'audio/webm' } }, {
+          transcribeAudio.mutate({ data: { userId: user.id, audioBase64: base64data, mimeType } }, {
             onSuccess: (newTask) => {
-              if (publicUrl) addAttachment.mutate({ id: newTask.id, data: { fileName: 'Nota de voz', fileUrl: publicUrl, fileType: 'audio/webm' } });
+              if (publicUrl) addAttachment.mutate({ id: newTask.id, data: { fileName: 'Nota de voz', fileUrl: publicUrl, fileType: mimeType } });
               queryClient.invalidateQueries({ queryKey: getGetTasksQueryKey() });
             },
             onError: (err: any) => {
@@ -133,7 +154,7 @@ export function MagicInput() {
     setStream(null);
   };
 
-  // DESPLAZAMIENTO FLUIDO CONTINUO TIPO VÍDEO A 60 FPS (SIN TROMPI CONES NI SALTOS BRUSCOS)
+  // DESPLAZAMIENTO FLUIDO CONTINUO TIPO VÍDEO A 60 FPS CON COMPATIBILIDAD MÓVIL UNIVERSAL
   useEffect(() => {
     if (!isRecording || !stream) return;
 
@@ -154,7 +175,7 @@ export function MagicInput() {
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-      const stepWidth = 8; // 4px de ancho de barra + 4px de espacio
+      const stepWidth = 8;
       let currentOffset = 0;
       let lastTime = performance.now();
 
@@ -167,7 +188,6 @@ export function MagicInput() {
         const dt = (now - lastTime) / 1000;
         lastTime = now;
 
-        // Desplazamiento líquido continuo a 60 FPS (28 px por segundo para un ritmo sereno)
         currentOffset += 28 * dt;
 
         if (currentOffset >= stepWidth) {
